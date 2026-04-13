@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GODLINESS Ascension</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #fbbf24; --secondary: #22c55e; --accent: #3b82f6; }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; }
+        .container { width: 100%; max-width: 400px; padding-bottom: 50px; }
+        .stats-card, .box, .task-item { background: var(--card); border-radius: 20px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.05); }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-content { background: var(--card); padding: 20px; border-radius: 25px; width: 90%; max-width: 380px; max-height: 80vh; display: flex; flex-direction: column; }
+        .scroll-area { overflow-y: auto; flex-grow: 1; padding-right: 5px; margin: 15px 0; }
+        .progress-container { background: #334155; height: 12px; border-radius: 10px; margin: 10px 0; overflow: hidden; }
+        #progress-bar { background: var(--primary); height: 100%; width: 0%; transition: width 0.4s; }
+        .task-item { display: flex; align-items: center; gap: 15px; cursor: pointer; position: relative; border: 2px solid transparent; transition: 0.2s; }
+        .task-item.done { border-color: var(--secondary); background: rgba(34, 197, 94, 0.1); }
+        .letter { font-size: 1.5rem; font-weight: 900; color: var(--primary); min-width: 30px; text-align: center; }
+        .streak-fire { position: absolute; right: 15px; color: #f97316; font-weight: bold; font-size: 0.8rem; }
+        .wheel-outer { position: relative; width: 220px; height: 220px; margin: 15px auto; }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; border: 5px solid var(--accent); position: relative; overflow: hidden; transition: transform 3s cubic-bezier(0.1, 0, 0.1, 1); background: var(--accent); }
+        .segment { position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; }
+        .pointer { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 25px solid #ef4444; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 100; }
+        #quest-display { min-height: 140px; margin: 10px 0; display: flex; flex-direction: column; justify-content: center; }
+        .quest-box { background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; text-align: left; border-left: 4px solid var(--primary); margin-bottom: 8px; }
+        .quest-label { font-size: 0.65rem; font-weight: 900; color: var(--accent); text-transform: uppercase; }
+        button { background: var(--primary); border: none; padding: 10px 18px; border-radius: 50px; font-weight: bold; color: #000; cursor: pointer; }
+        .lb-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #334155; }
+        .date-header { cursor: pointer; background: rgba(255,255,255,0.1); padding: 10px; margin-top: 5px; border-radius: 10px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .date-header::after { content: '▼'; font-size: 0.6rem; opacity: 0.5; }
+        .friend-header { background: var(--accent); color: white; margin-bottom: 5px; }
+        .hidden { display: none; }
+        .indent { margin-left: 15px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <div id="display-name" onclick="setName()" style="font-weight:bold; cursor:pointer;">SET NAME...</div>
+            <button onclick="document.getElementById('achieveModal').style.display='flex'">🏆 Trophies</button>
+        </div>
+        <div class="stats-card" style="text-align: center;">
+            <h2 id="user-rank">Level 1</h2>
+            <div class="progress-container"><div id="progress-bar"></div></div>
+            <small>XP: <span id="xp-display">0</span> / 700</small>
+        </div>
+        <div id="task-container"></div>
+        <div class="box" style="text-align: center;">
+            <h3>Sidequest Wheel</h3>
+            <div class="wheel-outer"><div class="pointer"></div><div id="wheel"></div></div>
+            <div id="quest-display"><p style="opacity:0.5;">Ready to spin?</p></div>
+            <div style="display:flex; justify-content:center; gap:10px;">
+                <button id="spin-btn" onclick="spinWheel()">SPIN</button>
+                <button onclick="document.getElementById('questModal').style.display='flex'" style="background:#475569; color:white;">Edit</button>
+            </div>
+        </div>
+        <div class="box">
+            <h3 style="text-align:center;">Leaderboard (Live)</h3>
+            <div id="leaderboard-list"></div>
+        </div>
+        <div class="box">
+            <h3 style="text-align:center;">Friend History</h3>
+            <div id="friends-list"></div>
+        </div>
+        <div class="box">
+            <h3 style="text-align:center;">My Log History</h3>
+            <div id="history-list"></div>
+        </div>
+        <button style="background:#ef4444; color:white; width:100%; margin-top: 20px;" onclick="resetEverything()">RESET EVERYTHING</button>
+    </div>
+
+    <div id="achieveModal" class="modal" onclick="this.style.display='none'"><div class="modal-content" onclick="event.stopPropagation()"><h2>Trophy Room</h2><div class="scroll-area" id="achievements-full-list"></div><button onclick="document.getElementById('achieveModal').style.display='none'">Close</button></div></div>
+    <div id="questModal" class="modal" onclick="this.style.display='none'"><div class="modal-content" onclick="event.stopPropagation()"><h3>Edit Quests</h3><div style="display:flex; gap:5px; margin-bottom:10px;"><input id="new-quest-input" type="text" placeholder="Solo | Squad" style="flex:1; padding:10px; border-radius:10px; background:#0f172a; color:white; border:none;"><button onclick="addCustomQuest()">Add</button></div><div class="scroll-area" id="quest-edit-list"></div><button onclick="document.getElementById('questModal').style.display='none'">Save</button></div></div>
+
+    <script>
+        // YOUR FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyAwJEP9IzCqyaNKQBjJohPEmykTpSBL5l4",
+            authDomain: "godliness-bd3f8.firebaseapp.com",
+            projectId: "godliness-bd3f8",
+            storageBucket: "godliness-bd3f8.firebasestorage.app",
+            messagingSenderId: "520495643556",
+            appId: "1:520495643556:web:e107bee032556f9ed89f31",
+            databaseURL: "https://godliness-bd3f8-default-rtdb.firebaseio.com"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const taskDefs = [
+            {l:'G', t:'Gratitude', s:'Name 3 blessings'}, {l:'O', t:'Outreach', s:'Kindness/service'},
+            {l:'D', t:'Discipline', s:'Workout/hard task'}, {l:'L', t:'Listen', s:'Quiet time/prayer'},
+            {l:'I', t:'Imagine', s:'Creative work'}, {l:'N', t:'New Ground', s:'Learn a fact'},
+            {l:'E', t:'Examine', s:'Scripture/study'}, {l:'S', t:'Sidequest', s:'Spin the wheel'},
+            {l:'S', t:'Self-Reflect', s:'Nightly recap'}
+        ];
+
+        let state = JSON.parse(localStorage.getItem('godlyVSync')) || { 
+            name: "", xp: 0, lvl: 1, history: [], friends: {}, streaks: {}, lastActive: "", completedToday: [],
+            sidequests: [
+                "Solo: Mystery Meal | Squad: Cart Ride & Random Cook-off",
+                "Solo: Trade paperclip | Squad: Trade up items 20m",
+                "Solo: Weird $5 shirt | Squad: Style each other",
+                "Solo: Hold pose 60s | Squad: Group FREEZE 2m",
+                "Solo: Guard walk | Squad: V.I.P. Secret Service escort"
+            ]
+        };
+
+        const today = new Date().toLocaleDateString();
+        if (state.lastActive !== today) { state.completedToday = []; state.lastActive = today; }
+
+        function save() {
+            localStorage.setItem('godlyVSync', JSON.stringify(state));
+            if (state.name && state.name !== "SET NAME...") {
+                db.ref('users/' + state.name).set({
+                    name: state.name, xp: state.xp, lvl: state.lvl, history: state.history
+                });
+            }
+        }
+
+        function sync() {
+            db.ref('users').on('value', (snap) => {
+                state.friends = snap.val() || {};
+                render();
+            });
+        }
+
+        function render() {
+            document.getElementById('display-name').innerText = state.name || "SET NAME...";
+            document.getElementById('xp-display').innerText = state.xp;
+            document.getElementById('user-rank').innerText = `Level ${state.lvl}`;
+            document.getElementById('progress-bar').style.width = (state.xp / 7) + '%';
+            
+            document.getElementById('task-container').innerHTML = taskDefs.map(item => `
+                <div class="task-item ${state.completedToday.includes(item.t) ? 'done' : ''}" onclick="toggleTask('${item.t}')">
+                    <div class="letter">${item.l}</div>
+                    <div style="display:flex; flex-direction:column;">
+                        <span style="font-weight:bold;">${item.t}</span>
+                        <small style="opacity:0.7; font-size:0.7rem;">${item.s}</small>
+                    </div>
+                    <div class="streak-fire">🔥 ${state.streaks[item.t] || 0}</div>
+                </div>`).join('');
+
+            document.getElementById('history-list').innerHTML = buildHistoryHtml(state.history);
+            document.getElementById('quest-edit-list').innerHTML = state.sidequests.map((q,i)=>`<div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #444;"><span>${q}</span><span onclick="removeQuest(${i})" style="color:red; cursor:pointer;">✖</span></div>`).join('');
+            
+            const lb = Object.values(state.friends).sort((a,b) => b.lvl - a.lvl || b.xp - a.xp);
+            document.getElementById('leaderboard-list').innerHTML = lb.map((f, i) => `<div class="lb-row"><span>#${i+1} ${f.name}</span><span style="color:var(--primary); font-weight:bold;">LVL ${f.lvl}</span></div>`).join('');
+
+            document.getElementById('friends-list').innerHTML = Object.values(state.friends)
+                .filter(f => f.name !== state.name)
+                .map(f => `
+                    <div class="date-header friend-header" onclick="this.nextElementSibling.classList.toggle('hidden')">👤 ${f.name} (LVL ${f.lvl})</div>
+                    <div class="hidden indent">${buildHistoryHtml(f.history || [])}</div>
+                `).join('');
+        }
+
+        function toggleTask(t) {
+            if (state.completedToday.includes(t)) return;
+            let log = prompt(`Log entry for ${t}:`); if(!log) return;
+            state.completedToday.push(t);
+            state.streaks[t] = (state.streaks[t] || 0) + 1;
+            state.xp += 15;
+            state.history.unshift({ t, n: log, d: today });
+            if (state.xp >= 700) { state.lvl++; state.xp = 0; }
+            save(); render();
+        }
+
+        function buildHistoryHtml(arr) {
+            if(!arr || !arr.length) return "<p style='padding:10px; opacity:0.5;'>No logs found.</p>";
+            const groups = {}; arr.forEach(h => { if(!groups[h.d]) groups[h.d] = []; groups[h.d].push(h); });
+            return Object.keys(groups).sort((a,b)=>new Date(b)-new Date(a)).map(d => `
+                <div class="date-header" onclick="this.nextElementSibling.classList.toggle('hidden')">📅 ${d}</div>
+                <div class="hidden">${groups[d].map(h=>`<p style="font-size:0.8rem; margin:5px 15px;"><b>${h.t}:</b> ${h.n}</p>`).join('')}</div>
+            `).join('');
+        }
+
+        function setupWheel() {
+            const wheel = document.getElementById('wheel');
+            const arc = 360 / state.sidequests.length;
+            wheel.innerHTML = '';
+            state.sidequests.forEach((q, i) => {
+                const seg = document.createElement('div');
+                seg.className = 'segment';
+                seg.style.background = i % 2 === 0 ? '#22c55e' : '#fbbf24';
+                seg.style.transform = `rotate(${i * arc}deg) skewY(${arc - 90}deg)`;
+                wheel.appendChild(seg);
+            });
+        }
+
+        let curRot = 0;
+        function spinWheel() {
+            const btn = document.getElementById('spin-btn');
+            btn.disabled = true;
+            const winIdx = Math.floor(Math.random() * state.sidequests.length);
+            const arc = 360 / state.sidequests.length;
+            curRot += 1440 + ((state.sidequests.length - winIdx) * arc - (arc / 2));
+            document.getElementById('wheel').style.transform = `rotate(${curRot}deg)`;
+            setTimeout(() => {
+                const [so, sq] = state.sidequests[winIdx].split('|').map(s => s.trim());
+                document.getElementById('quest-display').innerHTML = `<div class="quest-box"><div class="quest-label">SOLO</div><div>${so}</div></div><div class="quest-box"><div class="quest-label">SQUAD</div><div>${sq || 'None'}</div></div>`;
+                btn.disabled = false;
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.8 } });
+            }, 3000);
+        }
+
+        function setName() { const n = prompt("Name?"); if(n){ state.name = n; save(); render(); } }
+        function addCustomQuest() { const i = document.getElementById('new-quest-input'); if(i.value){ state.sidequests.push(i.value); i.value=""; save(); setupWheel(); render(); } }
+        function removeQuest(i) { state.sidequests.splice(i,1); save(); setupWheel(); render(); }
+        function resetEverything() { if(confirm("Erase all?")) { localStorage.clear(); location.reload(); } }
+
+        setupWheel(); sync(); render();
+    </script>
+</body>
+</html>
