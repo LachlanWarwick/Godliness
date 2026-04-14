@@ -10,62 +10,81 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #fbbf24; --accent: #3b82f6; --danger: #ef4444; }
-        body { background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        .container { width: 100%; max-width: 400px; }
-        .box { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 12px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; font-size: 16px; }
-        button { background: var(--primary); border: none; padding: 14px; border-radius: 50px; font-weight: bold; width: 100%; cursor: pointer; color: #000; transition: transform 0.1s; margin-top: 10px; }
-        button:active { transform: scale(0.98); }
+        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #fbbf24; --secondary: #22c55e; --accent: #3b82f6; --danger: #ef4444; }
+        body { background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        .container { width: 100%; max-width: 400px; padding-bottom: 80px; }
+        .box, .task-item { background: var(--card); border-radius: 20px; padding: 18px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 12px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
+        button { background: var(--primary); border: none; padding: 14px; border-radius: 50px; font-weight: bold; width: 100%; cursor: pointer; color: #000; margin-top: 10px; }
         .hidden { display: none !important; }
-        .lb-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #334155; }
-        .lb-row:last-child { border: none; }
-        #auth-screen { text-align: center; margin-top: 60px; }
-        .loading-spinner { border: 4px solid rgba(255,255,255,0.1); border-left-color: var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Task List */
+        .task-item { display: flex; align-items: center; gap: 15px; cursor: pointer; transition: 0.2s; }
+        .task-item.done { border-color: var(--secondary); background: rgba(34, 197, 94, 0.1); opacity: 0.8; }
+        .letter { font-size: 1.5rem; font-weight: 900; color: var(--primary); min-width: 30px; text-align: center; }
+
+        /* Wheel */
+        .wheel-outer { position: relative; width: 200px; height: 200px; margin: 15px auto; }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; border: 4px solid var(--accent); position: relative; overflow: hidden; transition: transform 3s cubic-bezier(0.1, 0, 0.1, 1); }
+        .segment { position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; }
+        .pointer { width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 20px solid var(--danger); position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 10; }
+
+        /* Tabs & Lists */
+        .lb-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
+        .date-header { background: rgba(255,255,255,0.1); padding: 10px; margin-top: 8px; border-radius: 10px; font-weight: bold; font-size: 0.9rem; cursor: pointer; }
+        .history-content { padding: 10px; font-size: 0.85rem; border-left: 2px solid var(--accent); margin-left: 10px; }
+        
+        /* Modal */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-content { background: var(--card); padding: 20px; border-radius: 25px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .achieve-item { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; margin-bottom: 8px; border-left: 4px solid #444; }
+        .achieve-item.unlocked { border-left-color: var(--primary); background: rgba(251, 191, 36, 0.1); }
     </style>
 </head>
 <body>
     <div class="container">
         
         <div id="auth-screen">
-            <h1 style="color: var(--primary); font-size: 2.5rem; margin-bottom: 0;">GODLINESS</h1>
-            <p style="opacity: 0.6; margin-bottom: 30px;">Ascend with your Squad</p>
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="pass" placeholder="Password">
-            <button onclick="handleAuth('login')">Login</button>
-            <button style="background: transparent; color: var(--primary); border: 1px solid var(--primary);" onclick="handleAuth('signup')">Create Account</button>
-            <div id="auth-loading" class="hidden"><div class="loading-spinner"></div></div>
+            <h1 style="color:var(--primary); text-align:center; font-size:2.5rem;">GODLINESS</h1>
+            <div class="box">
+                <input type="email" id="email" placeholder="Email">
+                <input type="password" id="pass" placeholder="Password">
+                <button onclick="handleAuth('login')">Login</button>
+                <button style="background:transparent; color:var(--primary); border:1px solid var(--primary);" onclick="handleAuth('signup')">Sign Up</button>
+            </div>
         </div>
 
         <div id="squad-screen" class="hidden">
-            <h2 style="text-align: center;">Welcome, <span id="user-name-display" style="color: var(--primary);"></span></h2>
+            <h2 style="text-align:center;">Warrior Profile</h2>
             <div class="box">
-                <p style="margin-top: 0;">Join a Squad</p>
-                <input type="text" id="squad-input" placeholder="Enter 6-Digit Code">
+                <input type="text" id="squad-input" placeholder="Enter 6-Digit Squad Code">
                 <button onclick="joinSquad()">Join Squad</button>
+                <div style="text-align:center; margin:15px 0; opacity:0.5;">— OR —</div>
+                <button style="background:var(--accent); color:white;" onclick="createSquad()">Create New Squad</button>
             </div>
-            <div style="text-align: center; margin: 20px 0; opacity: 0.5;">— OR —</div>
-            <button style="background: var(--accent); color: white;" onclick="createSquad()">Create New Squad</button>
-            <button style="margin-top: 40px; background: transparent; color: gray;" onclick="logout()">Logout</button>
         </div>
 
         <div id="app-screen" class="hidden">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-                <h3 id="squad-name-display" style="margin:0;">Active Squad</h3>
-                <div style="text-align: right;">
-                    <small style="opacity: 0.6;">Invite Code</small><br>
-                    <b id="squad-code-display" style="color:var(--primary); letter-spacing: 1px;"></b>
-                </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <div><small style="opacity:0.6;">SQUAD CODE</small><br><b id="squad-code-display" style="color:var(--primary);"></b></div>
+                <button onclick="document.getElementById('achieveModal').style.display='flex'" style="width:auto; padding:8px 15px;">🏆 Trophies</button>
             </div>
 
-            <div class="box" style="text-align: center; background: linear-gradient(145deg, #1e293b, #0f172a);">
-                <h1 id="lvl-display" style="font-size: 3rem; margin: 0; color: var(--primary);">1</h1>
-                <p style="text-transform: uppercase; letter-spacing: 2px; font-size: 0.8rem; opacity: 0.7;">Current Level</p>
-                <div style="background: #334155; height: 8px; border-radius: 10px; margin: 15px 0; overflow: hidden;">
-                    <div id="xp-bar" style="background: var(--primary); height: 100%; width: 0%; transition: width 0.5s;"></div>
+            <div class="box" style="text-align:center;">
+                <h1 id="lvl-display" style="font-size:3rem; margin:0; color:var(--primary);">1</h1>
+                <div style="background:#334155; height:8px; border-radius:10px; margin:10px 0; overflow:hidden;">
+                    <div id="xp-bar" style="background:var(--primary); height:100%; width:0%; transition:width 0.5s;"></div>
                 </div>
                 <small>XP: <span id="xp-val">0</span> / 700</small>
+            </div>
+
+            <div id="task-container"></div>
+
+            <div class="box" style="text-align:center;">
+                <h3>Sidequest Wheel</h3>
+                <div class="wheel-outer"><div class="pointer"></div><div id="wheel"></div></div>
+                <div id="quest-display" style="min-height:50px; margin:10px 0;">Spin for a challenge!</div>
+                <button id="spin-btn" onclick="spinWheel()">SPIN WHEEL</button>
             </div>
 
             <div class="box">
@@ -73,8 +92,20 @@
                 <div id="leaderboard"></div>
             </div>
 
-            <button onclick="logTask()" id="log-btn">Log Daily Victory (+50 XP)</button>
-            <button style="margin-top: 15px; background: transparent; color: var(--danger); font-size: 0.8rem;" onclick="logout()">Logout Account</button>
+            <div class="box">
+                <h3 style="margin-top:0;">Squad Activity</h3>
+                <div id="squad-history"></div>
+            </div>
+
+            <button style="background:transparent; color:var(--danger); font-size:0.8rem;" onclick="auth.signOut()">Logout Account</button>
+        </div>
+    </div>
+
+    <div id="achieveModal" class="modal" onclick="this.style.display='none'">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2>Trophy Room</h2>
+            <div id="achievements-list"></div>
+            <button onclick="document.getElementById('achieveModal').style.display='none'">Close</button>
         </div>
     </div>
 
@@ -92,131 +123,180 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        const taskDefs = [
+            {l:'G', t:'Gratitude', s:'Name 3 blessings'}, {l:'O', t:'Outreach', s:'Kindness/service'},
+            {l:'D', t:'Discipline', s:'Workout/Hard task'}, {l:'L', t:'Listen', s:'Quiet time/Prayer'},
+            {l:'I', t:'Imagine', s:'Creative work'}, {l:'N', t:'New Ground', s:'Learn a fact'},
+            {l:'E', t:'Examine', s:'Scripture/Study'}, {l:'S', t:'Sidequest', s:'Spin the Wheel'},
+            {l:'S', t:'Self-Reflect', s:'Nightly recap'}
+        ];
+
+        const sidequests = [
+            "Solo: Mystery Meal | Squad: Random Cook-off",
+            "Solo: Trade paperclip | Squad: Trade up items 20m",
+            "Solo: Weird $5 shirt | Squad: Style each other",
+            "Solo: Hold pose 60s | Squad: Group FREEZE 2m",
+            "Solo: Walk 1 mile | Squad: Secret Service Escort"
+        ];
+
         let currentUser = null;
-        let squadListener = null;
+        let squadId = null;
+        let userData = null;
 
-        // AUTH HANDLER
+        // AUTH
         async function handleAuth(type) {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('pass').value;
-            if(!email || !pass) return alert("Enter details");
-            
-            document.getElementById('auth-loading').classList.remove('hidden');
-            
+            const e = document.getElementById('email').value;
+            const p = document.getElementById('pass').value;
             try {
-                if (type === 'signup') {
-                    const res = await auth.createUserWithEmailAndPassword(email, pass);
-                    const name = prompt("Enter your display name:");
-                    await db.collection('users').doc(res.user.uid).set({
-                        name: name || "User",
-                        xp: 0,
-                        lvl: 1,
-                        squadId: null,
-                        lastLog: null
-                    });
+                if(type === 'signup') {
+                    const res = await auth.createUserWithEmailAndPassword(e, p);
+                    const name = prompt("Enter Display Name:");
+                    await db.collection('users').doc(res.user.uid).set({ name: name || "Warrior", xp: 0, lvl: 1, squadId: null, history: [], lastActive: "" });
                 } else {
-                    await auth.signInWithEmailAndPassword(email, pass);
+                    await auth.signInWithEmailAndPassword(e, p);
                 }
-            } catch (e) {
-                alert(e.message);
-                document.getElementById('auth-loading').classList.add('hidden');
-            }
+            } catch(err) { alert(err.message); }
         }
 
-        function logout() {
-            if(squadListener) squadListener();
-            auth.signOut();
-        }
-
-        // STATE MANAGER
         auth.onAuthStateChanged(user => {
-            if (user) {
+            if(user) {
                 currentUser = user;
                 document.getElementById('auth-screen').classList.add('hidden');
-                loadView();
+                initUser();
             } else {
-                document.getElementById('auth-screen').classList.remove('hidden');
-                document.getElementById('app-screen').classList.add('hidden');
-                document.getElementById('squad-screen').classList.add('hidden');
-                document.getElementById('auth-loading').classList.add('hidden');
+                location.reload();
             }
         });
 
-        async function loadView() {
+        async function initUser() {
             const doc = await db.collection('users').doc(currentUser.uid).get();
-            const data = doc.data();
-            
-            if (data.squadId) {
-                showApp(data.squadId);
+            userData = doc.data();
+            if(userData.squadId) {
+                squadId = userData.squadId;
+                showApp();
             } else {
-                document.getElementById('user-name-display').innerText = data.name;
                 document.getElementById('squad-screen').classList.remove('hidden');
             }
         }
 
-        // SQUAD ACTIONS
         async function createSquad() {
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-            await db.collection('squads').doc(code).set({ created: Date.now(), owner: currentUser.uid });
+            await db.collection('squads').doc(code).set({ created: Date.now() });
             await db.collection('users').doc(currentUser.uid).update({ squadId: code });
-            showApp(code);
+            location.reload();
         }
 
         async function joinSquad() {
             const code = document.getElementById('squad-input').value.toUpperCase();
-            if(!code) return;
-            const squad = await db.collection('squads').doc(code).get();
-            if (squad.exists()) {
+            const s = await db.collection('squads').doc(code).get();
+            if(s.exists()) {
                 await db.collection('users').doc(currentUser.uid).update({ squadId: code });
-                showApp(code);
-            } else {
-                alert("Squad code not found.");
-            }
+                location.reload();
+            } else { alert("Not found"); }
         }
 
-        function showApp(squadId) {
+        function showApp() {
             document.getElementById('squad-screen').classList.add('hidden');
             document.getElementById('app-screen').classList.remove('hidden');
             document.getElementById('squad-code-display').innerText = squadId;
+            setupWheel();
 
-            // Live Leaderboard & User Stats
-            if(squadListener) squadListener(); // Clean old listener
-            squadListener = db.collection('users').where('squadId', '==', squadId)
-                .onSnapshot(snap => {
-                    const lb = document.getElementById('leaderboard');
-                    lb.innerHTML = '';
-                    let members = [];
-                    snap.forEach(doc => members.push({id: doc.id, ...doc.data()}));
-                    
-                    members.sort((a,b) => b.lvl - a.lvl || b.xp - a.xp).forEach((m, i) => {
-                        const isMe = m.id === currentUser.uid;
-                        lb.innerHTML += `
-                            <div class="lb-row" style="${isMe ? 'color: var(--primary); font-weight: bold;' : ''}">
-                                <span>#${i+1} ${m.name} ${isMe ? '(You)' : ''}</span>
-                                <span>LVL ${m.lvl}</span>
-                            </div>`;
-                        
-                        if(isMe) {
-                            document.getElementById('lvl-display').innerText = m.lvl;
-                            document.getElementById('xp-val').innerText = m.xp;
-                            document.getElementById('xp-bar').style.width = (m.xp / 700 * 100) + '%';
-                        }
-                    });
+            // Real-time Sync
+            db.collection('users').where('squadId', '==', squadId).onSnapshot(snap => {
+                const lb = document.getElementById('leaderboard');
+                const hist = document.getElementById('squad-history');
+                lb.innerHTML = ''; hist.innerHTML = '';
+                let members = [];
+
+                snap.forEach(d => {
+                    const m = d.data();
+                    members.push(m);
+                    if(d.id === currentUser.uid) {
+                        userData = m;
+                        renderMyStats();
+                    }
+                    // Add to Squad History
+                    if(m.history && m.history.length > 0) {
+                        hist.innerHTML += `<div class="date-header" onclick="this.nextElementSibling.classList.toggle('hidden')">👤 ${m.name}</div>
+                        <div class="hidden history-content">${m.history.slice(0,5).map(h => `<div><b>${h.t}:</b> ${h.n}</div>`).join('')}</div>`;
+                    }
                 });
+
+                members.sort((a,b) => b.lvl - a.lvl || b.xp - a.xp).forEach((m, i) => {
+                    lb.innerHTML += `<div class="lb-row"><span>#${i+1} ${m.name}</span><b>LVL ${m.lvl}</b></div>`;
+                });
+                renderTrophies();
+            });
         }
 
-        async function logTask() {
-            const btn = document.getElementById('log-btn');
-            btn.disabled = true;
-            const docRef = db.collection('users').doc(currentUser.uid);
-            const doc = await docRef.get();
-            let { xp, lvl } = doc.data();
+        function renderMyStats() {
+            document.getElementById('lvl-display').innerText = userData.lvl;
+            document.getElementById('xp-val').innerText = userData.xp;
+            document.getElementById('xp-bar').style.width = (userData.xp / 700 * 100) + '%';
             
+            const today = new Date().toLocaleDateString();
+            const doneToday = userData.history.filter(h => h.d === today).map(h => h.t);
+            
+            document.getElementById('task-container').innerHTML = taskDefs.map(item => `
+                <div class="task-item ${doneToday.includes(item.t) ? 'done' : ''}" onclick="logTask('${item.t}')">
+                    <div class="letter">${item.l}</div>
+                    <div><b>${item.t}</b><br><small style="opacity:0.7;">${item.s}</small></div>
+                </div>`).join('');
+        }
+
+        async function logTask(t) {
+            const today = new Date().toLocaleDateString();
+            const doneToday = userData.history.filter(h => h.d === today).map(h => h.t);
+            if(doneToday.includes(t)) return;
+
+            const n = prompt(`Entry for ${t}:`);
+            if(!n) return;
+
+            let { xp, lvl, history } = userData;
             xp += 50;
-            if (xp >= 700) { xp = 0; lvl++; confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); }
-            
-            await docRef.update({ xp, lvl, lastLog: Date.now() });
-            btn.disabled = false;
+            if(xp >= 700) { xp = 0; lvl++; confetti(); }
+            history.unshift({ t, n, d: today });
+
+            await db.collection('users').doc(currentUser.uid).update({ xp, lvl, history });
+        }
+
+        function setupWheel() {
+            const wheel = document.getElementById('wheel');
+            const arc = 360 / sidequests.length;
+            wheel.innerHTML = '';
+            sidequests.forEach((q, i) => {
+                const seg = document.createElement('div');
+                seg.className = 'segment';
+                seg.style.background = i % 2 === 0 ? '#22c55e' : '#fbbf24';
+                seg.style.transform = `rotate(${i * arc}deg) skewY(${arc - 90}deg)`;
+                wheel.appendChild(seg);
+            });
+        }
+
+        let curRot = 0;
+        function spinWheel() {
+            const btn = document.getElementById('spin-btn');
+            btn.disabled = true;
+            const winIdx = Math.floor(Math.random() * sidequests.length);
+            const arc = 360 / sidequests.length;
+            curRot += 1440 + ((sidequests.length - winIdx) * arc - (arc / 2));
+            document.getElementById('wheel').style.transform = `rotate(${curRot}deg)`;
+            setTimeout(() => {
+                document.getElementById('quest-display').innerText = sidequests[winIdx];
+                btn.disabled = false;
+                confetti();
+            }, 3000);
+        }
+
+        function renderTrophies() {
+            const trophies = [
+                {n: "Awakened", d: "Logged first win", c: userData.history.length > 0},
+                {n: "High Roller", d: "Reached Level 5", c: userData.lvl >= 5},
+                {n: "Mischief", d: "Completed 5 Sidequests", c: userData.history.filter(h => h.t === 'Sidequest').length >= 5}
+            ];
+            document.getElementById('achievements-list').innerHTML = trophies.map(a => `
+                <div class="achieve-item ${a.c ? 'unlocked' : ''}"><b>${a.c ? '✅' : '🔒'} ${a.n}</b><br><small>${a.d}</small></div>
+            `).join('');
         }
     </script>
 </body>
