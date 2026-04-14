@@ -38,6 +38,7 @@
 </head>
 <body>
     <div class="container">
+        
         <div id="auth-screen">
             <h1 style="text-align:center; color:var(--primary);">GODLINESS</h1>
             <div class="box">
@@ -187,7 +188,11 @@
             document.getElementById('squad-screen').classList.add('hidden');
             document.getElementById('app-screen').classList.remove('hidden');
             document.getElementById('squad-code-display').innerText = userState.squadId;
+            
+            renderMyStats();
             setupWheel();
+            renderQuestList();
+
             db.collection('users').where('squadId', '==', userState.squadId).onSnapshot(snap => {
                 const lb = document.getElementById('leaderboard-list');
                 const fl = document.getElementById('friends-list');
@@ -196,8 +201,10 @@
                 snap.forEach(d => {
                     const m = d.data();
                     members.push(m);
-                    if(d.id === auth.currentUser.uid) { userState = m; renderMyStats(); }
-                    if(m.name !== userState.name) {
+                    if(d.id === auth.currentUser.uid) { 
+                        userState = m; 
+                        renderMyStats(); 
+                    } else {
                         fl.innerHTML += `<div class="date-header" onclick="this.nextElementSibling.classList.toggle('hidden')">👤 ${m.name} (LVL ${m.lvl})</div>
                         <div class="hidden indent">${buildHistoryHtml(m.history)}</div>`;
                     }
@@ -210,29 +217,35 @@
         }
 
         function renderMyStats() {
+            if(!userState) return;
             document.getElementById('display-name').innerText = userState.name;
             document.getElementById('xp-display').innerText = userState.xp;
             document.getElementById('user-rank').innerText = `Level ${userState.lvl}`;
             document.getElementById('progress-bar').style.width = (userState.xp / 7) + '%';
+            
             const today = new Date().toLocaleDateString();
-            const doneToday = userState.history.filter(h => h.d === today).map(h => h.t);
-            document.getElementById('task-container').innerHTML = taskDefs.map(item => `
+            const doneToday = userState.history ? userState.history.filter(h => h.d === today).map(h => h.t) : [];
+            
+            const container = document.getElementById('task-container');
+            container.innerHTML = taskDefs.map(item => `
                 <div class="task-item ${doneToday.includes(item.t) ? 'done' : ''}" onclick="logTask('${item.t}')">
                     <div class="letter">${item.l}</div>
                     <div><b>${item.t}</b><br><small style="opacity:0.7;">${item.s}</small></div>
-                    <div class="streak-fire">🔥 ${userState.streaks[item.t] || 0}</div>
+                    <div class="streak-fire">🔥 ${ (userState.streaks && userState.streaks[item.t]) ? userState.streaks[item.t] : 0 }</div>
                 </div>`).join('');
         }
 
         async function logTask(t) {
             const today = new Date().toLocaleDateString();
-            if(userState.history.some(h => h.t === t && h.d === today)) return;
+            if(userState.history && userState.history.some(h => h.t === t && h.d === today)) return;
             const n = prompt(`Log entry for ${t}:`);
             if(!n) return;
             let { xp, lvl, history, streaks } = userState;
             xp += 15;
             if(xp >= 700) { xp = 0; lvl++; confetti(); }
+            if(!streaks) streaks = {};
             streaks[t] = (streaks[t] || 0) + 1;
+            if(!history) history = [];
             history.unshift({ t, n, d: today });
             await db.collection('users').doc(auth.currentUser.uid).update({ xp, lvl, history, streaks });
         }
@@ -278,7 +291,8 @@
         function addCustomQuest() { const i = document.getElementById('new-quest-input'); if(i.value){ sidequests.push(i.value); i.value=""; setupWheel(); renderQuestList(); } }
         function renderQuestList() { document.getElementById('quest-edit-list').innerHTML = sidequests.map((q,i)=>`<div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #444;"><span>${q}</span><span onclick="sidequests.splice(${i},1); renderQuestList(); setupWheel();" style="color:red; cursor:pointer;">✖</span></div>`).join(''); }
         function renderTrophies() {
-            const trophies = [{n: "Awakened", d: "First win", c: userState.history.length >= 1}, {n: "Level 5", d: "Ascended", c: userState.lvl >= 5}];
+            if(!userState) return;
+            const trophies = [{n: "Awakened", d: "First win", c: (userState.history && userState.history.length >= 1)}, {n: "Level 5", d: "Ascended", c: userState.lvl >= 5}];
             document.getElementById('achievements-full-list').innerHTML = trophies.map(a => `<div class="achieve-item ${a.c?'unlocked':''}"><b>${a.c?'✅':'🔒'} ${a.n}</b><br><small>${a.d}</small></div>`).join('');
         }
     </script>
