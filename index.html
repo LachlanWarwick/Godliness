@@ -8,159 +8,151 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <style>
+    <style id="theme-style">
         :root { 
             --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #fbbf24; 
-            --secondary: #22c55e; --accent: #3b82f6; --danger: #ef4444; 
+            --secondary: #22c55e; --accent: #3b82f6; --danger: #ef4444; --font-main: sans-serif;
         }
-        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        .light-mode { --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --primary: #d97706; }
+        .midnight-mode { --bg: #000000; --card: #111111; --text: #ffffff; --primary: #ffd700; }
+        
+        body { background: var(--bg); color: var(--text); font-family: var(--font-main); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; transition: background 0.3s; }
         .hidden { display: none !important; }
         .container { width: 100%; max-width: 400px; padding-bottom: 50px; }
-
-        /* Massive Logo */
-        .big-logo { font-size: 4.5rem; text-align: center; margin: 20px 0; display: block; filter: drop-shadow(0 0 10px var(--primary)); }
         
-        /* XP Popup */
-        @keyframes xpFloat { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-50px); } }
-        .xp-popup { position: fixed; color: var(--primary); font-weight: 900; font-size: 1.5rem; pointer-events: none; z-index: 1000; animation: xpFloat 1s forwards; }
-
         .box, .task-item, .friend-card { background: var(--card); border-radius: 20px; padding: 15px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
         
-        .task-item { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
-        .task-item.done { border-color: var(--secondary); background: rgba(34, 197, 94, 0.1); }
-        .streak-fire { color: #f97316; font-weight: bold; }
+        /* Tasks */
+        .task-item { display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: 0.2s; }
+        .task-item.done { border: 2px solid var(--secondary); background: rgba(34, 197, 94, 0.1); }
+        .streak-fire { color: #f97316; font-weight: bold; flex-shrink: 0; }
 
-        /* Tabs */
-        .tab-scroll { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px; scrollbar-width: none; }
-        .day-btn { padding: 6px 12px; border-radius: 12px; font-size: 0.75rem; background: rgba(255,255,255,0.1); border: none; color: white; cursor: pointer; white-space: nowrap; }
+        /* Squad Dropdowns */
+        .friend-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 5px 0; }
+        .history-content { margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; }
+        
+        /* Tab Scroll */
+        .tab-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
+        .tab-scroll::-webkit-scrollbar { display: none; }
+        .day-btn { padding: 5px 12px; border-radius: 10px; font-size: 0.7rem; background: rgba(255,255,255,0.1); border: none; color: inherit; cursor: pointer; white-space: nowrap; }
         .day-btn.active { background: var(--primary); color: #000; font-weight: bold; }
 
-        /* Wheel */
-        .wheel-outer { position: relative; width: 200px; height: 200px; margin: 15px auto; }
-        #wheel { width: 100%; height: 100%; border-radius: 50%; border: 4px solid var(--accent); position: relative; overflow: hidden; transition: transform 3s cubic-bezier(0.1, 0, 0.1, 1); }
+        /* Wheel & Progress */
+        .wheel-outer { position: relative; width: 180px; height: 180px; margin: 15px auto; }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; border: 4px solid var(--accent); transition: transform 3s cubic-bezier(0.1, 0, 0.1, 1); position: relative; overflow: hidden; }
         .segment { position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; }
+        .progress-bar { background: rgba(255,255,255,0.1); height: 12px; border-radius: 10px; margin: 10px 0; overflow: hidden; }
+        #progress-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.5s; }
 
-        button { background: var(--primary); border: none; padding: 14px; border-radius: 50px; font-weight: 800; color: #000; cursor: pointer; width: 100%; margin: 5px 0; }
-        input { width: 100%; padding: 14px; margin: 8px 0; border-radius: 10px; border: none; background: rgba(0,0,0,0.3); color: #fff; box-sizing: border-box; font-size: 1rem; }
-
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 200; display: none; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+        button { background: var(--primary); border: none; padding: 12px; border-radius: 50px; font-weight: 800; color: #000; cursor: pointer; width: 100%; margin: 5px 0; }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal-content { background: var(--card); padding: 25px; border-radius: 25px; width: 90%; max-width: 380px; }
     </style>
 </head>
-<body>
+<body id="body-tag">
     <div class="container">
         
-        <div class="big-logo">🔱</div>
-
         <div id="auth-screen">
-            <h1 style="text-align:center; margin-top:0;">GODLINESS</h1>
+            <h1 style="text-align:center; color:var(--primary);">GODLINESS</h1>
             <div class="box">
-                <input type="email" id="email" placeholder="Email">
-                <input type="password" id="pass" placeholder="Password">
+                <input type="email" id="email" placeholder="Email" style="width:100%; padding:10px; margin:5px 0; border-radius:10px; border:none;">
+                <input type="password" id="pass" placeholder="Password" style="width:100%; padding:10px; margin:5px 0; border-radius:10px; border:none;">
                 <button onclick="handleAuth('login')">Login</button>
-                <button style="background:transparent; color:var(--primary); border:2px solid var(--primary);" onclick="handleAuth('signup')">Sign Up</button>
-            </div>
-        </div>
-
-        <div id="name-screen" class="hidden">
-            <h2 style="text-align:center;">Name your Warrior</h2>
-            <div class="box">
-                <input type="text" id="initial-name" placeholder="Enter Name">
-                <button onclick="saveInitialName()">Begin Ascension</button>
-            </div>
-        </div>
-
-        <div id="squad-screen" class="hidden">
-            <h2 style="text-align:center;">Squad Setup</h2>
-            <div class="box">
-                <input type="text" id="squad-input" placeholder="Squad Code">
-                <button onclick="joinSquad()">Join Squad</button>
-                <button style="background:var(--accent); color:white;" onclick="createSquad()">Create New Squad</button>
             </div>
         </div>
 
         <div id="app-screen" class="hidden">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h2 id="display-name" style="margin:0;">Warrior</h2>
-                <button onclick="document.getElementById('settingsModal').style.display='flex'" style="width:auto; background:none; font-size:1.8rem; padding:0; color:white;">⚙️</button>
+                <h2 style="margin:0;">GODLINESS</h2>
+                <button onclick="document.getElementById('settingsModal').style.display='flex'" style="width:auto; background:none; font-size:1.5rem;">⚙️</button>
             </div>
 
             <div class="box" style="text-align:center;">
-                <h3 id="user-rank" style="margin:0;">Level 1</h3>
-                <div style="background:rgba(255,255,255,0.1); height:12px; border-radius:10px; margin:10px 0; overflow:hidden;">
-                    <div id="progress-bar" style="background:var(--primary); height:100%; width:0%; transition:0.8s;"></div>
-                </div>
-                <small>XP: <span id="xp-display">0</span> / 700</small>
+                <h3 id="user-lvl" style="margin:0;">Level 1</h3>
+                <div class="progress-bar"><div id="progress-fill"></div></div>
+                <small><span id="xp-val">0</span> / 700 XP</small>
             </div>
 
-            <div id="task-container"></div>
+            <div id="task-list"></div>
 
             <div class="box" style="text-align:center;">
                 <h3>Sidequest Wheel</h3>
                 <div class="wheel-outer"><div id="wheel"></div></div>
-                <div id="quest-display" style="font-weight:bold; color:var(--primary); margin-bottom:10px;"></div>
+                <div id="quest-result" style="margin:10px; font-weight:bold; color:var(--primary);"></div>
                 <div style="display:flex; gap:10px;">
-                    <button id="spin-btn" onclick="spinWheel()">SPIN</button>
+                    <button onclick="spinWheel()">SPIN</button>
                     <button onclick="document.getElementById('questModal').style.display='flex'" style="background:#475569; color:white; width:auto;">Edit</button>
                 </div>
             </div>
 
-            <div id="friends-list"></div>
+            <div class="box">
+                <h3 style="text-align:center;">Leaderboard</h3>
+                <div id="leaderboard-ui"></div>
+            </div>
+
+            <div class="box">
+                <h3 style="text-align:center;">Squad Activity</h3>
+                <div id="squad-ui"></div>
+            </div>
         </div>
     </div>
 
     <div id="settingsModal" class="modal"><div class="modal-content">
-        <h3>Settings</h3>
-        <input type="text" id="edit-name" placeholder="Update Name">
-        <button onclick="updateName()">Save Name</button>
-        <button style="background:var(--danger); color:white;" onclick="leaveSquad()">Leave Squad</button>
-        <button style="background:#475569; color:white;" onclick="auth.signOut(); location.reload();">Logout</button>
-        <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; color:white;">Close</button>
+        <h3>Warrior Settings</h3>
+        <label>Theme</label>
+        <select id="theme-sel" onchange="applyTheme(this.value)" style="width:100%; padding:10px; margin:10px 0; border-radius:10px;">
+            <option value="dark">Dark Slate</option>
+            <option value="light">Light Mode</option>
+            <option value="midnight">Midnight Gold</option>
+        </select>
+        <button onclick="auth.signOut()" style="background:var(--danger); color:white;">Logout</button>
+        <button onclick="document.getElementById('settingsModal').style.display='none'">Close</button>
     </div></div>
 
     <div id="questModal" class="modal"><div class="modal-content">
         <h3>Edit Quests</h3>
-        <div id="wheel-items-list"></div>
-        <input type="text" id="new-quest-input" placeholder="New quest...">
-        <button onclick="addQuest()">Add</button>
+        <div id="quest-edit-list"></div>
+        <input type="text" id="new-q" placeholder="Add custom..." style="width:100%; padding:10px; margin:10px 0; border-radius:10px;">
+        <button onclick="addQ()">Add</button>
         <button onclick="document.getElementById('questModal').style.display='none'">Close</button>
     </div></div>
 
     <script>
-        const firebaseConfig = {
+        const firebaseConfig = { 
             apiKey: "AIzaSyAwJEP9IzCqyaNKQBjJohPEmykTpSBL5l4",
             authDomain: "godliness-bd3f8.firebaseapp.com",
             projectId: "godliness-bd3f8",
             storageBucket: "godliness-bd3f8.firebasestorage.app",
             messagingSenderId: "520495643556",
             appId: "1:520495643556:web:e107bee032556f9ed89f31",
-            databaseURL: "https://godliness-bd3f8-default-rtdb.firebaseio.com"
+            databaseURL: "https://godliness-bd3f8-default-rtdb.firebaseio.com" 
         };
         firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth(), db = firebase.database();
+        const db = firebase.database(), auth = firebase.auth();
 
-        const taskDefs = [{l:'G', t:'Gratitude'}, {l:'O', t:'Outreach'}, {l:'D', t:'Discipline'}, {l:'L', t:'Listen'}, {l:'I', t:'Imagine'}, {l:'N', t:'New Ground'}, {l:'E', t:'Examine'}, {l:'S', t:'Sidequest'}, {l:'S', t:'Self-Reflect'}];
+        const taskDefs = [
+            {l:'G', t:'Gratitude', d:'Name 3 things you are grateful for'},
+            {l:'O', t:'Outreach', d:'Kindness or service to others'},
+            {l:'D', t:'Discipline', d:'Complete a workout or hard task'},
+            {l:'L', t:'Listen', d:'Quiet time, prayer or meditation'},
+            {l:'I', t:'Imagine', d:'Work on a creative project'},
+            {l:'N', t:'New Ground', d:'Learn a new fact or skill'},
+            {l:'E', t:'Examine', d:'Study scripture or wisdom'},
+            {l:'S', t:'Sidequest', d:'Spin the wheel for a challenge'},
+            {l:'S', t:'Self-Reflect', d:'Nightly recap of your growth'}
+        ];
+
         let userState = null;
-        let sidequests = ["10 Pushups", "Walk 1 Mile", "Read 5 Pages", "Cold Shower"];
+        let sidequests = ["10 Pushups", "No Sugar", "Read 5 Pages"];
         let activeTabs = {};
 
         auth.onAuthStateChanged(user => {
             if(user) {
                 db.ref('users/' + user.uid).on('value', snap => {
                     userState = snap.val();
-                    if(!userState) {
-                        document.getElementById('auth-screen').classList.add('hidden');
-                        document.getElementById('name-screen').classList.remove('hidden');
-                    } else if(!userState.squadId) {
-                        document.getElementById('auth-screen').classList.add('hidden');
-                        document.getElementById('name-screen').classList.add('hidden');
-                        document.getElementById('squad-screen').classList.remove('hidden');
-                    } else {
-                        document.getElementById('auth-screen').classList.add('hidden');
-                        document.getElementById('name-screen').classList.add('hidden');
-                        document.getElementById('squad-screen').classList.add('hidden');
-                        document.getElementById('app-screen').classList.remove('hidden');
-                        showApp();
+                    if(userState) {
+                        applyTheme(userState.theme || 'dark');
+                        renderAll();
                     }
                 });
             } else {
@@ -169,76 +161,101 @@
             }
         });
 
-        async function saveInitialName() {
-            const name = document.getElementById('initial-name').value;
-            if(!name) return;
-            await db.ref('users/' + auth.currentUser.uid).set({ name, xp:0, lvl:1, history:[], streaks:{}, squadId:"" });
-        }
+        function renderAll() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
+            document.getElementById('xp-val').innerText = userState.xp;
+            document.getElementById('user-lvl').innerText = `Level ${userState.lvl}`;
+            document.getElementById('progress-fill').style.width = (userState.xp / 7) + '%';
 
-        function showApp() {
-            document.getElementById('display-name').innerText = userState.name;
-            document.getElementById('xp-display').innerText = userState.xp;
-            document.getElementById('user-rank').innerText = `Level ${userState.lvl}`;
-            document.getElementById('progress-bar').style.width = (userState.xp / 7) + '%';
-            
             const today = new Date().toLocaleDateString();
             const doneToday = (userState.history || []).filter(h => h.d === today).map(h => h.t);
-            
-            document.getElementById('task-container').innerHTML = taskDefs.map(item => `
-                <div class="task-item ${doneToday.includes(item.t) ? 'done' : ''}" onclick="logTask('${item.t}', event)">
-                    <span><b>${item.l}</b> ${item.t}</span>
+
+            // Tasks with Descriptions & Undo
+            document.getElementById('task-list').innerHTML = taskDefs.map(item => `
+                <div class="task-item ${doneToday.includes(item.t) ? 'done' : ''}" onclick="toggleTask('${item.t}')">
+                    <div style="padding-right:10px;">
+                        <b style="color:var(--primary); font-size:1.2rem;">${item.l}</b> <b>${item.t}</b><br>
+                        <small style="opacity:0.7;">${item.d}</small>
+                    </div>
                     <div class="streak-fire">🔥 ${userState.streaks?.[item.t] || 0}</div>
                 </div>`).join('');
 
+            // Squad Dropdowns & Leaderboard
             db.ref('users').orderByChild('squadId').equalTo(userState.squadId).on('value', snap => {
-                const members = Object.values(snap.val() || {});
-                const fl = document.getElementById('friends-list');
-                fl.innerHTML = '<h3 style="text-align:center;">Squad Activity</h3>';
+                const members = Object.values(snap.val() || {}).sort((a,b) => b.lvl - a.lvl || b.xp - a.xp);
+                
+                // Leaderboard
+                document.getElementById('leaderboard-ui').innerHTML = members.map((m,i) => `
+                    <div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <span>#${i+1} <b>${m.name}</b></span>
+                        <span style="font-size:0.8rem; opacity:0.7;">Lvl ${m.lvl} (${m.xp} XP)</span>
+                    </div>`).join('');
+
+                // Squad Dropdowns
+                const squadUi = document.getElementById('squad-ui');
+                squadUi.innerHTML = '';
                 members.forEach(m => {
                     const mId = m.name.replace(/\s/g, '');
-                    const histMap = {};
-                    (m.history || []).forEach(h => { if(!histMap[h.d]) histMap[h.d] = []; histMap[h.d].push(h); });
-                    const dates = Object.keys(histMap).sort((a,b) => new Date(b) - new Date(a));
+                    const hist = {};
+                    (m.history || []).forEach(h => { if(!hist[h.d]) hist[h.d] = []; hist[h.d].push(h); });
+                    const dates = Object.keys(hist).sort((a,b) => new Date(b) - new Date(a));
                     if(!activeTabs[mId]) activeTabs[mId] = dates || "";
 
-                    fl.innerHTML += `
+                    squadUi.innerHTML += `
                         <div class="friend-card">
-                            <div style="display:flex; justify-content:space-between;">
-                                <b>${m.name}</b>
-                                <span style="color:var(--primary); font-size:0.8rem;">Lvl ${m.lvl} • ${m.xp} XP</span>
+                            <div class="friend-header" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                                <b>👤 ${m.name}</b>
+                                <span style="font-size:0.75rem; color:var(--primary);">Lvl ${m.lvl} ▼</span>
                             </div>
-                            <div class="tab-scroll">${dates.map(d => `<button class="day-btn ${activeTabs[mId]===d?'active':''}" onclick="setTab('${mId}','${d}')">${d}</button>`).join('')}</div>
-                            <div style="font-size:0.8rem; opacity:0.8;">${(histMap[activeTabs[mId]] || []).map(h => `• ${h.t}: ${h.n}`).join('<br>') || "No activity"}</div>
+                            <div class="history-content hidden">
+                                <div class="tab-scroll">
+                                    ${dates.map(d => `<button class="day-btn ${activeTabs[mId]===d?'active':''}" onclick="event.stopPropagation(); setTab('${mId}','${d}')">${d}</button>`).join('')}
+                                </div>
+                                <div style="font-size:0.8rem;">
+                                    ${(hist[activeTabs[mId]] || []).map(h => `<div>• <b>${h.t}:</b> ${h.n}</div>`).join('') || "No logs"}
+                                </div>
+                            </div>
                         </div>`;
                 });
             });
             renderWheel();
         }
 
-        function setTab(mId, date) { activeTabs[mId] = date; showApp(); }
-
-        async function logTask(t, event) {
+        async function toggleTask(t) {
             const today = new Date().toLocaleDateString();
-            if(userState.history && userState.history.some(h => h.t === t && h.d === today)) return;
-            const n = prompt(`What did you do?`); if(!n) return;
-            showXPPopup(event.clientX, event.clientY);
-            let { xp, lvl, history=[], streaks={} } = userState;
-            xp += 15; if(xp >= 700) { xp = 0; lvl++; confetti(); }
-            streaks[t] = (streaks[t] || 0) + 1;
-            history.unshift({ t, n, d: today });
-            await db.ref('users/' + auth.currentUser.uid).update({ xp, lvl, history, streaks });
+            const existingIdx = (userState.history || []).findIndex(h => h.t === t && h.d === today);
+
+            if(existingIdx > -1) {
+                if(confirm(`Undo ${t} and remove 15 XP?`)) {
+                    let { xp, history, streaks } = userState;
+                    xp = Math.max(0, xp - 15);
+                    history.splice(existingIdx, 1);
+                    streaks[t] = Math.max(0, streaks[t] - 1);
+                    await db.ref('users/' + auth.currentUser.uid).update({ xp, history, streaks });
+                }
+            } else {
+                const n = prompt(`Log for ${t}:`);
+                if(!n) return;
+                let { xp, lvl, history=[], streaks={} } = userState;
+                xp += 15; if(xp >= 700) { xp = 0; lvl++; confetti(); }
+                streaks[t] = (streaks[t] || 0) + 1;
+                history.unshift({ t, n, d: today });
+                await db.ref('users/' + auth.currentUser.uid).update({ xp, lvl, history, streaks });
+            }
         }
 
-        function showXPPopup(x, y) {
-            const p = document.createElement('div'); p.className = 'xp-popup'; p.innerText = '+15 XP';
-            p.style.left = x + 'px'; p.style.top = y + 'px';
-            document.body.appendChild(p); setTimeout(() => p.remove(), 1000);
+        function setTab(mId, date) { activeTabs[mId] = date; renderAll(); }
+
+        function applyTheme(t) {
+            document.body.className = t === 'light' ? 'light-mode' : (t === 'midnight' ? 'midnight-mode' : '');
+            db.ref('users/' + auth.currentUser.uid).update({ theme: t });
         }
 
         function renderWheel() {
             const wheel = document.getElementById('wheel'), arc = 360 / sidequests.length;
             wheel.innerHTML = sidequests.map((q, i) => `<div class="segment" style="transform: rotate(${i * arc}deg) skewY(${arc - 90}deg); background:${i % 2 === 0 ? '#22c55e' : '#fbbf24'}"></div>`).join('');
-            document.getElementById('wheel-items-list').innerHTML = sidequests.map((q, i) => `<div style="display:flex; justify-content:space-between; margin:5px 0;"><span>${q}</span><button onclick="sidequests.splice(${i},1);renderWheel();" style="width:auto; background:red; padding:2px 8px;">X</button></div>`).join('');
+            document.getElementById('quest-edit-list').innerHTML = sidequests.map((q, i) => `<div style="display:flex; justify-content:space-between; margin:5px 0;"><span>${q}</span><button onclick="sidequests.splice(${i},1);renderWheel();" style="width:auto; background:red; padding:2px 8px;">X</button></div>`).join('');
         }
 
         let rot = 0;
@@ -247,31 +264,13 @@
             document.getElementById('wheel').style.transform = `rotate(${rot}deg)`;
             setTimeout(() => {
                 const idx = Math.floor(sidequests.length - (rot % 360) / (360 / sidequests.length)) % sidequests.length;
-                document.getElementById('quest-display').innerText = sidequests[idx];
+                document.getElementById('quest-result').innerText = sidequests[idx];
                 confetti();
             }, 3000);
         }
 
-        function addQuest() {
-            const v = document.getElementById('new-quest-input').value;
-            if(v) { sidequests.push(v); document.getElementById('new-quest-input').value = ''; renderWheel(); }
-        }
-
-        async function updateName() {
-            const newName = document.getElementById('edit-name').value;
-            if(newName) await db.ref('users/' + auth.currentUser.uid).update({ name: newName });
-            document.getElementById('settingsModal').style.display = 'none';
-        }
-
-        async function handleAuth(type) {
-            const e = document.getElementById('email').value, p = document.getElementById('pass').value;
-            if(type === 'signup') await auth.createUserWithEmailAndPassword(e, p);
-            else await auth.signInWithEmailAndPassword(e, p);
-        }
-
-        async function createSquad() { const code = Math.random().toString(36).substring(2, 8).toUpperCase(); await db.ref('users/' + auth.currentUser.uid).update({ squadId: code }); }
-        async function joinSquad() { const code = document.getElementById('squad-input').value.toUpperCase(); await db.ref('users/' + auth.currentUser.uid).update({ squadId: code }); }
-        async function leaveSquad() { if(confirm("Leave squad?")) await db.ref('users/' + auth.currentUser.uid).update({ squadId: "" }); }
+        function addQ() { const v = document.getElementById('new-q').value; if(v) { sidequests.push(v); document.getElementById('new-q').value=''; renderWheel(); } }
+        async function handleAuth(type) { const e = document.getElementById('email').value, p = document.getElementById('pass').value; if(type === 'login') await auth.signInWithEmailAndPassword(e, p); }
     </script>
 </body>
 </html>
