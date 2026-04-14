@@ -8,55 +8,82 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <style>
-        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #fbbf24; --secondary: #22c55e; --accent: #3b82f6; }
-        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 400px; padding-bottom: 50px; }
-        .box, .task-item, .friend-card { background: var(--card); border-radius: 20px; padding: 15px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
-        .hidden { display: none !important; }
+    <style id="theme-style">
+        :root { 
+            --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #fbbf24; 
+            --secondary: #22c55e; --accent: #3b82f6; --danger: #ef4444; --font-main: sans-serif;
+        }
+        .light-mode { --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --primary: #d97706; }
+        .midnight-mode { --bg: #000000; --card: #111111; --text: #ffffff; --primary: #ffd700; }
         
-        /* Task Layout */
-        .task-item { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .task-item.done { border: 2px solid var(--secondary); background: rgba(34, 197, 94, 0.1); }
-        .streak-fire { color: #f97316; font-weight: bold; }
+        body { background: var(--bg); color: var(--text); font-family: var(--font-main); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        .hidden { display: none !important; }
+        .container { width: 100%; max-width: 400px; padding-bottom: 50px; box-sizing: border-box; }
+        
+        /* XP Popup */
+        @keyframes xpFloat { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-50px); } }
+        .xp-popup { position: fixed; color: var(--primary); font-weight: 900; font-size: 1.5rem; pointer-events: none; z-index: 1000; animation: xpFloat 1s forwards; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+
+        .box, .task-item, .friend-card { background: var(--card); border-radius: 20px; padding: 15px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); box-sizing: border-box; }
+        
+        /* Task Item: Streaks locked to right */
+        .task-item { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+        .task-item.done { border-color: var(--secondary); background: rgba(34, 197, 94, 0.1); }
+        .streak-fire { color: #f97316; font-weight: bold; margin-left: 10px; flex-shrink: 0; }
 
         /* Squad History Tabs */
-        .tab-scroll { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px; }
-        .day-btn { padding: 6px 12px; border-radius: 12px; font-size: 0.8rem; background: rgba(255,255,255,0.1); cursor: pointer; white-space: nowrap; border: none; color: white; }
+        .tab-scroll { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); scrollbar-width: none; }
+        .tab-scroll::-webkit-scrollbar { display: none; }
+        .day-btn { padding: 6px 12px; border-radius: 12px; font-size: 0.75rem; background: rgba(255,255,255,0.1); border: none; color: white; cursor: pointer; white-space: nowrap; }
         .day-btn.active { background: var(--primary); color: #000; font-weight: bold; }
 
-        /* Progress & Wheel */
-        .progress-bar { background: rgba(255,255,255,0.1); height: 12px; border-radius: 10px; margin: 10px 0; overflow: hidden; }
-        #progress-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.5s; }
-        .wheel-outer { width: 200px; height: 200px; margin: 15px auto; position: relative; }
-        #wheel { width: 100%; height: 100%; border-radius: 50%; border: 4px solid var(--accent); transition: transform 3s cubic-bezier(0.1, 0, 0.1, 1); overflow: hidden; position: relative; }
+        /* Wheel */
+        .wheel-outer { position: relative; width: 200px; height: 200px; margin: 15px auto; }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; border: 4px solid var(--accent); position: relative; overflow: hidden; transition: transform 3s cubic-bezier(0.1, 0, 0.1, 1); }
         .segment { position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; }
+        .pointer { width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 20px solid #ef4444; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 10; }
 
-        button { background: var(--primary); border: none; padding: 12px; border-radius: 50px; font-weight: bold; cursor: pointer; width: 100%; margin: 5px 0; }
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; }
-        .modal-content { background: var(--card); padding: 20px; border-radius: 25px; width: 90%; max-width: 350px; max-height: 80vh; overflow-y: auto; }
+        /* Progress */
+        .progress-container { background: rgba(255,255,255,0.1); height: 12px; border-radius: 10px; margin: 10px 0; overflow: hidden; }
+        #progress-bar { background: var(--primary); height: 100%; width: 0%; transition: width 0.8s; }
+
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-content { background: var(--card); padding: 25px; border-radius: 25px; width: 90%; max-width: 380px; max-height: 85vh; overflow-y: auto; }
+        
+        button { background: var(--primary); border: none; padding: 12px; border-radius: 50px; font-weight: 800; color: #000; cursor: pointer; width: 100%; margin: 5px 0; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; border: none; background: rgba(0,0,0,0.2); color: #fff; box-sizing: border-box; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="app-screen">
+        
+        <div id="auth-screen">
+            <h1 style="text-align:center; color:var(--primary);">GODLINESS</h1>
+            <div class="box">
+                <input type="email" id="email" placeholder="Email">
+                <input type="password" id="pass" placeholder="Password">
+                <button onclick="handleAuth('login')">Login</button>
+            </div>
+        </div>
+
+        <div id="app-screen" class="hidden">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h2 id="display-name">Warrior</h2>
-                <button onclick="document.getElementById('settingsModal').style.display='flex'" style="width:auto; background:none; font-size:1.5rem;">⚙️</button>
+                <div id="display-name" style="font-weight:900;">Warrior</div>
+                <button onclick="document.getElementById('settingsModal').style.display='flex'" style="width:auto; background:none; font-size:1.5rem; padding:0;">⚙️</button>
             </div>
 
             <div class="box" style="text-align:center;">
-                <h3 id="user-lvl">Level 1</h3>
-                <div class="progress-bar"><div id="progress-fill"></div></div>
-                <small>XP: <span id="xp-val">0</span> / 700</small>
+                <h2 id="user-rank" style="margin:0;">Level 1</h2>
+                <div class="progress-container"><div id="progress-bar"></div></div>
+                <small>XP: <span id="xp-display">0</span> / 700</small>
             </div>
 
-            <div id="task-list"></div>
+            <div id="task-container"></div>
 
             <div class="box" style="text-align:center;">
-                <h3>Sidequest</h3>
-                <div class="wheel-outer"><div id="wheel"></div></div>
-                <div id="quest-result" style="margin: 10px 0; font-weight: bold;"></div>
+                <h3>Sidequest Wheel</h3>
+                <div class="wheel-outer"><div class="pointer"></div><div id="wheel"></div></div>
+                <div id="quest-display" style="margin-bottom:10px; font-weight:bold; color:var(--primary);"></div>
                 <div style="display:flex; gap:10px;">
                     <button id="spin-btn" onclick="spinWheel()">SPIN</button>
                     <button onclick="document.getElementById('questModal').style.display='flex'" style="background:#475569; color:white; width:auto;">Edit</button>
@@ -64,8 +91,8 @@
             </div>
 
             <div class="box">
-                <h3 style="text-align:center;">Squad Activity</h3>
-                <div id="squad-list"></div>
+                <h3 style="text-align:center;">Squad History</h3>
+                <div id="friends-list"></div>
             </div>
         </div>
     </div>
@@ -73,143 +100,139 @@
     <div id="questModal" class="modal"><div class="modal-content">
         <h3>Edit Wheel</h3>
         <div id="wheel-items-list"></div>
-        <input type="text" id="new-quest" placeholder="Add custom quest..." style="width:100%; padding:10px; margin:10px 0; border-radius:10px; border:none;">
+        <input type="text" id="new-quest-input" placeholder="New quest...">
         <button onclick="addQuest()">Add Quest</button>
         <button onclick="document.getElementById('questModal').style.display='none'" style="background:none; color:white;">Close</button>
     </div></div>
 
     <div id="settingsModal" class="modal"><div class="modal-content">
-        <h3>Settings</h3>
+        <h2>Settings</h2>
+        <button style="background:var(--danger); color:white;" onclick="leaveSquad()">Leave Squad</button>
         <button onclick="auth.signOut()">Logout</button>
-        <button onclick="document.getElementById('settingsModal').style.display='none'">Back</button>
+        <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; color:white;">Close</button>
     </div></div>
 
     <script>
-        // --- Firebase Config (Placeholder - Use your real keys) ---
-        const firebaseConfig = { databaseURL: "https://godliness-bd3f8-default-rtdb.firebaseio.com" };
+        const firebaseConfig = {
+            apiKey: "AIzaSyAwJEP9IzCqyaNKQBjJohPEmykTpSBL5l4",
+            authDomain: "godliness-bd3f8.firebaseapp.com",
+            projectId: "godliness-bd3f8",
+            storageBucket: "godliness-bd3f8.firebasestorage.app",
+            messagingSenderId: "520495643556",
+            appId: "1:520495643556:web:e107bee032556f9ed89f31",
+            databaseURL: "https://godliness-bd3f8-default-rtdb.firebaseio.com"
+        };
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database(), auth = firebase.auth();
+        const auth = firebase.auth(), db = firebase.database();
 
+        const taskDefs = [{l:'G', t:'Gratitude'}, {l:'O', t:'Outreach'}, {l:'D', t:'Discipline'}, {l:'L', t:'Listen'}, {l:'I', t:'Imagine'}, {l:'N', t:'New Ground'}, {l:'E', t:'Examine'}, {l:'S', t:'Sidequest'}, {l:'S', t:'Self-Reflect'}];
         let userState = null;
-        let sidequests = ["Pushups", "Reading", "Cold Shower", "Kindness"];
-        let activeTabs = {}; // Store selected date per user
+        let sidequests = ["Solo: 10 Pushups", "Squad: Sync Walk", "Solo: Drink Water"];
+        let activeTabs = {};
 
-        const tasks = [
-            {l:'G', t:'Gratitude'}, {l:'O', t:'Outreach'}, {l:'D', t:'Discipline'},
-            {l:'L', t:'Listen'}, {l:'I', t:'Imagine'}, {l:'N', t:'New Ground'},
-            {l:'E', t:'Examine'}, {l:'S', t:'Sidequest'}, {l:'S', t:'Self-Reflect'}
-        ];
-
-        // MOCK AUTH (Replace with your auth logic)
         auth.onAuthStateChanged(user => {
             if(user) {
                 db.ref('users/' + user.uid).on('value', snap => {
                     userState = snap.val();
-                    renderAll();
+                    if(userState) { showApp(); }
                 });
-            }
+            } else { document.getElementById('auth-screen').classList.remove('hidden'); document.getElementById('app-screen').classList.add('hidden'); }
         });
 
-        function renderAll() {
-            if(!userState) return;
+        function showApp() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
             document.getElementById('display-name').innerText = userState.name;
-            document.getElementById('xp-val').innerText = userState.xp;
-            document.getElementById('user-lvl').innerText = `Level ${userState.lvl}`;
-            document.getElementById('progress-fill').style.width = (userState.xp / 7) + '%';
-
-            // Tasks
-            const today = new Date().toLocaleDateString();
-            const doneToday = userState.history ? userState.history.filter(h => h.d === today).map(h => h.t) : [];
+            document.getElementById('xp-display').innerText = userState.xp;
+            document.getElementById('user-rank').innerText = `Level ${userState.lvl}`;
+            document.getElementById('progress-bar').style.width = (userState.xp / 7) + '%';
             
-            document.getElementById('task-list').innerHTML = tasks.map(tk => `
-                <div class="task-item ${doneToday.includes(tk.t) ? 'done' : ''}" onclick="logTask('${tk.t}')">
-                    <span><b>${tk.l}</b> ${tk.t}</span>
-                    <span class="streak-fire">🔥 ${userState.streaks?.[tk.t] || 0}</span>
-                </div>
-            `).join('');
+            const today = new Date().toLocaleDateString();
+            const doneToday = (userState.history || []).filter(h => h.d === today).map(h => h.t);
+            
+            document.getElementById('task-container').innerHTML = taskDefs.map(item => `
+                <div class="task-item ${doneToday.includes(item.t) ? 'done' : ''}" onclick="logTask('${item.t}', event)">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <b style="color:var(--primary); width:20px;">${item.l}</b>
+                        <span>${item.t}</span>
+                    </div>
+                    <div class="streak-fire">🔥 ${userState.streaks?.[item.t] || 0}</div>
+                </div>`).join('');
 
-            // Squad Activity with History Tabs
-            db.ref('users').orderByChild('squadId').equalTo(userState.squadId).once('value', snap => {
+            db.ref('users').orderByChild('squadId').equalTo(userState.squadId).on('value', snap => {
                 const members = Object.values(snap.val() || {});
-                const list = document.getElementById('squad-list');
-                list.innerHTML = '';
-
+                const fl = document.getElementById('friends-list');
+                fl.innerHTML = '';
+                
                 members.forEach(m => {
                     const mId = m.name.replace(/\s/g, '');
-                    const histMap = {};
-                    (m.history || []).forEach(h => {
-                        if(!histMap[h.d]) histMap[h.d] = [];
-                        histMap[h.d].push(h);
-                    });
-
-                    const dates = Object.keys(histMap).sort((a,b) => new Date(b) - new Date(a));
+                    const histGroup = {};
+                    (m.history || []).forEach(h => { if(!histGroup[h.d]) histGroup[h.d] = []; histGroup[h.d].push(h); });
+                    const dates = Object.keys(histGroup).sort((a,b) => new Date(b) - new Date(a));
+                    
                     if(!activeTabs[mId]) activeTabs[mId] = dates || "";
 
-                    list.innerHTML += `
+                    fl.innerHTML += `
                         <div class="friend-card">
-                            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                                 <b>${m.name}</b>
-                                <span style="font-size:0.8rem; color:var(--primary);">Lvl ${m.lvl} • ${m.xp} XP</span>
+                                <span style="font-size:0.75rem; color:var(--primary);">Lvl ${m.lvl} • ${m.xp} XP</span>
                             </div>
                             <div class="tab-scroll">
                                 ${dates.map(d => `<button class="day-btn ${activeTabs[mId]===d?'active':''}" onclick="setTab('${mId}','${d}')">${d}</button>`).join('')}
                             </div>
-                            <div style="font-size:0.85rem; opacity:0.8;">
-                                ${(histMap[activeTabs[mId]] || []).map(h => `<div>• ${h.t}: ${h.n}</div>`).join('') || "No logs"}
+                            <div style="font-size:0.8rem; opacity:0.8;">
+                                ${(histGroup[activeTabs[mId]] || []).map(h => `<div>• ${h.t}: ${h.n}</div>`).join('') || "No logs"}
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                 });
             });
             renderWheel();
         }
 
-        function setTab(mId, date) {
-            activeTabs[mId] = date;
-            renderAll();
-        }
+        function setTab(mId, date) { activeTabs[mId] = date; showApp(); }
 
-        async function logTask(t) {
+        async function logTask(t, event) {
             const today = new Date().toLocaleDateString();
-            const n = prompt(`What did you do for ${t}?`);
-            if(!n) return;
-            
-            let { xp, lvl, streaks = {}, history = [] } = userState;
+            if(userState.history && userState.history.some(h => h.t === t && h.d === today)) return;
+            const n = prompt(`What did you do?`); if(!n) return;
+
+            const p = document.createElement('div'); p.className = 'xp-popup'; p.innerText = '+15 XP';
+            p.style.left = event.clientX + 'px'; p.style.top = event.clientY + 'px';
+            document.body.appendChild(p); setTimeout(() => p.remove(), 1000);
+
+            let { xp, lvl, history=[], streaks={} } = userState;
             xp += 15; if(xp >= 700) { xp = 0; lvl++; confetti(); }
             streaks[t] = (streaks[t] || 0) + 1;
             history.unshift({ t, n, d: today });
-            await db.ref('users/' + auth.currentUser.uid).update({ xp, lvl, streaks, history });
+            await db.ref('users/' + auth.currentUser.uid).update({ xp, lvl, history, streaks });
         }
 
         function renderWheel() {
-            const wheel = document.getElementById('wheel');
-            const arc = 360 / sidequests.length;
-            wheel.innerHTML = sidequests.map((q, i) => `
-                <div class="segment" style="transform: rotate(${i*arc}deg) skewY(${arc-90}deg); background:${i%2?'#fbbf24':'#22c55e'}"></div>
-            `).join('');
-            
-            document.getElementById('wheel-items-list').innerHTML = sidequests.map((q, i) => `
-                <div style="display:flex; justify-content:space-between; margin:5px 0;">
-                    <span>${q}</span>
-                    <button onclick="sidequests.splice(${i},1); renderWheel();" style="width:auto; padding:2px 8px; background:red;">X</button>
-                </div>
-            `).join('');
+            const wheel = document.getElementById('wheel'), arc = 360 / sidequests.length;
+            wheel.innerHTML = sidequests.map((q, i) => `<div class="segment" style="transform: rotate(${i * arc}deg) skewY(${arc - 90}deg); background:${i % 2 === 0 ? '#22c55e' : '#fbbf24'}"></div>`).join('');
+            document.getElementById('wheel-items-list').innerHTML = sidequests.map((q, i) => `<div style="display:flex; justify-content:space-between; margin:5px 0;"><span>${q}</span><button onclick="sidequests.splice(${i},1);renderWheel();" style="width:auto; background:red; padding:2px 8px;">X</button></div>`).join('');
         }
 
-        let rotation = 0;
+        let rot = 0;
         function spinWheel() {
-            rotation += 1800 + Math.random() * 360;
-            document.getElementById('wheel').style.transform = `rotate(${rotation}deg)`;
+            rot += 1800 + (Math.random() * 360);
+            document.getElementById('wheel').style.transform = `rotate(${rot}deg)`;
             setTimeout(() => {
-                const idx = Math.floor(sidequests.length - (rotation % 360) / (360 / sidequests.length)) % sidequests.length;
-                document.getElementById('quest-result').innerText = sidequests[idx];
+                const idx = Math.floor(sidequests.length - (rot % 360) / (360 / sidequests.length)) % sidequests.length;
+                document.getElementById('quest-display').innerText = sidequests[idx];
                 confetti();
             }, 3000);
         }
 
         function addQuest() {
-            const val = document.getElementById('new-quest').value;
-            if(val) { sidequests.push(val); document.getElementById('new-quest').value = ''; renderWheel(); }
+            const v = document.getElementById('new-quest-input').value;
+            if(v) { sidequests.push(v); document.getElementById('new-quest-input').value = ''; renderWheel(); }
+        }
+
+        async function handleAuth(type) {
+            const e = document.getElementById('email').value, p = document.getElementById('pass').value;
+            if(type === 'login') await auth.signInWithEmailAndPassword(e, p);
         }
     </script>
 </body>
