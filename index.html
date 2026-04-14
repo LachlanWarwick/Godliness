@@ -35,6 +35,7 @@
         .hidden { display: none !important; }
         .achieve-item { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px; margin-bottom: 8px; border-left: 4px solid #444; }
         .achieve-item.unlocked { border-left-color: var(--primary); background: rgba(251, 191, 36, 0.1); }
+        .settings-btn { background: none; color: white; width: auto; font-size: 1.5rem; padding: 0; }
     </style>
 </head>
 <body>
@@ -63,7 +64,10 @@
         <div id="app-screen" class="hidden">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <div id="display-name" style="font-weight:bold;">Warrior</div>
-                <button onclick="document.getElementById('achieveModal').style.display='flex'" style="width:auto;">🏆 Trophies</button>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="document.getElementById('achieveModal').style.display='flex'" style="width:auto;">🏆</button>
+                    <button class="settings-btn" onclick="document.getElementById('settingsModal').style.display='flex'">⚙️</button>
+                </div>
             </div>
 
             <div class="stats-card" style="text-align: center;">
@@ -85,17 +89,14 @@
             </div>
 
             <div class="box">
-                <h3 style="text-align:center;">Squad Leaderboard</h3>
+                <h3 style="text-align:center;">Squad: <span id="squad-code-display" style="color:var(--primary)"></span></h3>
                 <div id="leaderboard-list"></div>
-                <div style="text-align:center; margin-top:10px;"><small>Code: <b id="squad-code-display" style="color:var(--primary)"></b></small></div>
             </div>
 
             <div class="box">
                 <h3 style="text-align:center;">Squad Activity</h3>
                 <div id="friends-list"></div>
             </div>
-
-            <button style="background:var(--danger); color:white; margin-top: 20px;" onclick="auth.signOut()">LOGOUT</button>
         </div>
     </div>
 
@@ -105,6 +106,19 @@
         <div style="display:flex; gap:5px; margin-bottom:10px;"><input id="new-quest-input" placeholder="Solo | Squad" style="flex:1;"><button onclick="addCustomQuest()" style="width:auto;">Add</button></div>
         <div class="scroll-area" id="quest-edit-list"></div>
         <button onclick="document.getElementById('questModal').style.display='none'">Save</button>
+    </div></div>
+
+    <div id="settingsModal" class="modal" onclick="this.style.display='none'"><div class="modal-content" onclick="event.stopPropagation()">
+        <h2>Warrior Settings</h2>
+        <div class="scroll-area">
+            <label>Update Name</label>
+            <input type="text" id="settings-name-input" placeholder="New Name">
+            <button onclick="updateProfileName()" style="margin-bottom:20px;">Save Profile</button>
+            <hr style="opacity:0.1; margin:20px 0;">
+            <button style="background:var(--accent); color:white;" onclick="leaveSquad()">Leave Current Squad</button>
+            <button style="background:var(--danger); color:white; margin-top:10px;" onclick="auth.signOut()">Logout</button>
+        </div>
+        <button onclick="document.getElementById('settingsModal').style.display='none'">Close</button>
     </div></div>
 
     <script>
@@ -133,7 +147,6 @@
         let userState = null;
         let sidequests = ["Solo: Mystery Meal | Squad: Cook-off", "Solo: Trade paperclip | Squad: Trade up", "Solo: Weird $5 shirt | Squad: Style", "Solo: Hold pose 60s | Squad: Group FREEZE", "Solo: Walk 1 mile | Squad: VIP Escort"];
 
-        // AUTH LOGIC
         async function handleAuth(type) {
             const e = document.getElementById('email').value;
             const p = document.getElementById('pass').value;
@@ -154,6 +167,7 @@
                     userState = snap.val();
                     if(!userState.squadId) {
                         document.getElementById('auth-screen').classList.add('hidden');
+                        document.getElementById('app-screen').classList.add('hidden');
                         document.getElementById('squad-screen').classList.remove('hidden');
                     } else {
                         showApp();
@@ -166,7 +180,6 @@
             }
         });
 
-        // SQUAD LOGIC
         async function createSquad() {
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
             await db.ref('users/' + auth.currentUser.uid).update({ squadId: code });
@@ -178,6 +191,22 @@
             await db.ref('users/' + auth.currentUser.uid).update({ squadId: code });
         }
 
+        async function leaveSquad() {
+            if(confirm("Are you sure you want to leave your squad?")) {
+                await db.ref('users/' + auth.currentUser.uid).update({ squadId: "" });
+                document.getElementById('settingsModal').style.display = 'none';
+            }
+        }
+
+        async function updateProfileName() {
+            const newName = document.getElementById('settings-name-input').value.trim();
+            if(newName) {
+                await db.ref('users/' + auth.currentUser.uid).update({ name: newName });
+                alert("Profile Updated!");
+                document.getElementById('settingsModal').style.display = 'none';
+            }
+        }
+
         function showApp() {
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('squad-screen').classList.add('hidden');
@@ -187,7 +216,6 @@
             renderMyStats();
             setupWheel();
 
-            // Sync Squad
             db.ref('users').orderByChild('squadId').equalTo(userState.squadId).on('value', snap => {
                 const members = Object.values(snap.val() || {});
                 const lb = document.getElementById('leaderboard-list');
@@ -248,7 +276,6 @@
             `).join('');
         }
 
-        // WHEEL & QUEST EDITING
         function setupWheel() {
             const wheel = document.getElementById('wheel');
             const arc = 360 / sidequests.length;
@@ -271,18 +298,16 @@
             curRot += 1440 + ((sidequests.length - winIdx) * arc - (arc / 2));
             document.getElementById('wheel').style.transform = `rotate(${curRot}deg)`;
             setTimeout(() => {
-                const [so, sq] = sidequests[winIdx].split('|').map(s => s.trim());
-                document.getElementById('quest-display').innerHTML = `<div class="quest-box"><div class="quest-label">SOLO</div><div>${so}</div></div><div class="quest-box"><div class="quest-label">SQUAD</div><div>${sq || 'None'}</div></div>`;
+                const parts = sidequests[winIdx].split('|');
+                const so = parts ? parts.trim() : "Task";
+                const sq = parts ? parts.trim() : "None";
+                document.getElementById('quest-display').innerHTML = `<div class="quest-box"><div class="quest-label">SOLO</div><div>${so}</div></div><div class="quest-box"><div class="quest-label">SQUAD</div><div>${sq}</div></div>`;
                 btn.disabled = false;
                 confetti();
             }, 3000);
         }
 
-        function openQuestModal() {
-            renderQuestList();
-            document.getElementById('questModal').style.display = 'flex';
-        }
-
+        function openQuestModal() { renderQuestList(); document.getElementById('questModal').style.display = 'flex'; }
         function renderQuestList() {
             document.getElementById('quest-edit-list').innerHTML = sidequests.map((q,i)=>`
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #444; font-size:0.8rem;">
@@ -290,22 +315,11 @@
                     <button onclick="removeQuest(${i})" style="width:auto; background:red; padding:5px 10px; font-size:0.7rem;">✖</button>
                 </div>`).join('');
         }
-
         function addCustomQuest() {
             const val = document.getElementById('new-quest-input').value;
-            if(val) {
-                sidequests.push(val);
-                document.getElementById('new-quest-input').value = "";
-                renderQuestList();
-                setupWheel();
-            }
+            if(val) { sidequests.push(val); document.getElementById('new-quest-input').value = ""; renderQuestList(); setupWheel(); }
         }
-
-        function removeQuest(i) {
-            sidequests.splice(i, 1);
-            renderQuestList();
-            setupWheel();
-        }
+        function removeQuest(i) { sidequests.splice(i, 1); renderQuestList(); setupWheel(); }
 
         function renderTrophies() {
             const count = (userState.history || []).length;
@@ -318,10 +332,7 @@
                 {n: "Consistent", d: "50 total tasks completed", c: count >= 50},
                 {n: "Centurion", d: "100 total tasks completed", c: count >= 100}
             ];
-            document.getElementById('achievements-full-list').innerHTML = trophies.map(a => `
-                <div class="achieve-item ${a.c?'unlocked':''}">
-                    <b>${a.c?'✅':'🔒'} ${a.n}</b><br><small>${a.d}</small>
-                </div>`).join('');
+            document.getElementById('achievements-full-list').innerHTML = trophies.map(a => `<div class="achieve-item ${a.c?'unlocked':''}"><b>${a.c?'✅':'🔒'} ${a.n}</b><br><small>${a.d}</small></div>`).join('');
         }
     </script>
 </body>
