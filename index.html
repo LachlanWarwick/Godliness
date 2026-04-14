@@ -21,62 +21,56 @@
             background: var(--bg); color: var(--text); font-family: var(--font-main); 
             margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; 
             transition: background var(--anim-speed), color var(--anim-speed); min-height: 100vh;
+            overflow-x: hidden; /* Fixes tabs going off page */
         }
 
-        /* Essential Visibility Fix */
         .hidden { display: none !important; }
-
-        .container { width: 100%; max-width: 400px; padding-bottom: 50px; position: relative; }
+        .container { width: 100%; max-width: 400px; padding-bottom: 50px; position: relative; box-sizing: border-box; }
         
-        /* Animations */
-        @keyframes xpFloat {
-            0% { opacity: 0; transform: translateY(0); }
-            20% { opacity: 1; }
-            100% { opacity: 0; transform: translateY(-50px); }
-        }
-        .xp-popup {
-            position: absolute; color: var(--primary); font-weight: 900;
-            font-size: 1.2rem; pointer-events: none; z-index: 1000;
-            animation: xpFloat 1s ease-out forwards;
-        }
+        /* XP Popup Animation */
+        @keyframes xpFloat { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-50px); } }
+        .xp-popup { position: fixed; color: var(--primary); font-weight: 900; font-size: 1.5rem; pointer-events: none; z-index: 1000; animation: xpFloat 1s ease-out forwards; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
 
         .stats-card, .box, .task-item { 
             background: var(--card); border-radius: 20px; padding: 15px; margin-bottom: 15px; 
             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; 
-            border: 1px solid rgba(255,255,255,0.05); transition: transform 0.2s;
-            position: relative;
+            border: 1px solid rgba(255,255,255,0.05); overflow: hidden;
         }
+
+        /* Task Styling */
+        .task-item { display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: transform 0.1s; }
+        .task-item:active { transform: scale(0.98); }
+        .task-item.done { border-color: var(--secondary); background: rgba(34, 197, 94, 0.1); }
+        .streak-fire { color: #f97316; font-weight: bold; }
+
+        /* Restored Wheel UI */
+        .wheel-outer { position: relative; width: 220px; height: 220px; margin: 20px auto; }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; border: 5px solid var(--accent); position: relative; overflow: hidden; transition: transform 3s cubic-bezier(0.1, 0, 0.1, 1); }
+        .segment { position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; }
+        .pointer { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 25px solid #ef4444; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 10; }
 
         /* Progress Bar */
         .progress-container { background: rgba(255,255,255,0.1); height: 14px; border-radius: 10px; margin: 15px 0; overflow: hidden; }
-        #progress-bar { background: linear-gradient(90deg, var(--primary), #fcd34d); height: 100%; width: 0%; transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        #progress-bar { background: linear-gradient(90deg, var(--primary), #fcd34d); height: 100%; width: 0%; transition: width 0.8s ease-out; }
 
-        /* Task Items */
-        .task-item { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
-        .task-item.done { border-color: var(--secondary); background: rgba(34, 197, 94, 0.15); }
-        .streak-fire { color: #f97316; font-weight: bold; font-size: 1rem; }
-
-        /* Leaderboard & Friends */
-        .lb-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .xp-pill { background: rgba(251, 191, 36, 0.15); color: var(--primary); padding: 2px 8px; border-radius: 20px; font-weight: bold; font-size: 0.8rem; }
-        .date-header { cursor: pointer; background: rgba(128,128,128,0.1); padding: 12px; margin-top: 8px; border-radius: 12px; font-weight: bold; }
-
-        /* Buttons */
+        /* Modal Overhaul */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-content { background: var(--card); padding: 25px; border-radius: 25px; width: 90%; max-width: 380px; max-height: 85vh; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); }
+        
         button { background: var(--primary); border: none; padding: 14px; border-radius: 50px; font-weight: 800; color: #000; cursor: pointer; width: 100%; margin: 8px 0; }
-        .midnight-mode .leave-btn { color: #fff !important; background: var(--danger) !important; }
-
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
-        .modal-content { background: var(--card); padding: 25px; border-radius: 30px; width: 90%; max-width: 380px; max-height: 85vh; overflow-y: auto; }
+        .lb-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: center; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; border: none; background: rgba(0,0,0,0.2); color: #fff; box-sizing: border-box; }
+        .light-mode input, .light-mode select { background: #eee; color: #000; }
     </style>
 </head>
 <body>
     <div class="container">
         
         <div id="auth-screen">
-            <h1 style="text-align:center; color:var(--primary); font-size: 2.5rem; margin-top: 40px;">GODLINESS</h1>
+            <h1 style="text-align:center; color:var(--primary);">GODLINESS</h1>
             <div class="box">
-                <input type="email" id="email" placeholder="Email" style="width:100%; padding:12px; margin:8px 0; border-radius:10px; border:none; background:#0f172a; color:#fff;">
-                <input type="password" id="pass" placeholder="Password" style="width:100%; padding:12px; margin:8px 0; border-radius:10px; border:none; background:#0f172a; color:#fff;">
+                <input type="email" id="email" placeholder="Email">
+                <input type="password" id="pass" placeholder="Password">
                 <button onclick="handleAuth('login')">Login</button>
                 <button style="background:transparent; color:var(--primary); border:2px solid var(--primary);" onclick="handleAuth('signup')">Sign Up</button>
             </div>
@@ -85,17 +79,17 @@
         <div id="squad-screen" class="hidden">
             <h2 style="text-align:center;">Join your Squad</h2>
             <div class="box">
-                <input type="text" id="squad-input" placeholder="Enter Squad Code" style="width:100%; padding:12px; margin:8px 0; border-radius:10px;">
+                <input type="text" id="squad-input" placeholder="Squad Code">
                 <button onclick="joinSquad()">Join Squad</button>
-                <button style="background:var(--accent); color:white;" onclick="createSquad()">Create New Squad</button>
+                <button style="background:var(--accent); color:white;" onclick="createSquad()">Create Squad</button>
             </div>
         </div>
 
         <div id="app-screen" class="hidden">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <div id="display-name" style="font-weight:900; font-size:1.4rem;">Warrior</div>
-                <div style="display:flex; gap:12px;">
-                    <button onclick="document.getElementById('achieveModal').style.display='flex'" style="width:auto; padding: 10px 18px;">🏆</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <div id="display-name" style="font-weight:900;">Warrior</div>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="document.getElementById('achieveModal').style.display='flex'" style="width:auto; padding:10px 15px;">🏆</button>
                     <button onclick="document.getElementById('settingsModal').style.display='flex'" style="width:auto; background:none; color:inherit; font-size:1.8rem; padding:0;">⚙️</button>
                 </div>
             </div>
@@ -103,7 +97,7 @@
             <div class="stats-card">
                 <h2 id="user-rank" style="text-align:center; margin:0;">Level 1</h2>
                 <div class="progress-container"><div id="progress-bar"></div></div>
-                <div style="text-align:center; font-weight:bold; opacity:0.8;">XP: <span id="xp-display">0</span> / 700</div>
+                <div style="text-align:center; font-weight:bold;">XP: <span id="xp-display">0</span> / 700</div>
             </div>
 
             <div id="task-container"></div>
@@ -111,7 +105,7 @@
             <div class="box" style="text-align:center;">
                 <h3>Sidequest Wheel</h3>
                 <div class="wheel-outer"><div class="pointer"></div><div id="wheel"></div></div>
-                <div id="quest-display"></div>
+                <div id="quest-display" style="min-height:20px; margin-bottom:10px; font-weight:bold; color:var(--primary);"></div>
                 <button id="spin-btn" onclick="spinWheel()">SPIN FOR XP</button>
             </div>
 
@@ -128,16 +122,33 @@
     </div>
 
     <div id="settingsModal" class="modal" onclick="this.style.display='none'"><div class="modal-content" onclick="event.stopPropagation()">
-        <h2>Warrior Settings</h2>
-        <label>Name</label><input type="text" id="set-name" style="width:100%; padding:10px; margin-bottom:15px;">
-        <label>Theme</label><select id="theme-select" style="width:100%; padding:10px; margin-bottom:15px;"><option value="dark">Dark</option><option value="light">Light</option><option value="midnight">Midnight</option></select>
-        <button onclick="updateProfile()">Save</button>
-        <button class="leave-btn" onclick="leaveSquad()">Leave Squad</button>
+        <h2 style="margin-top:0;">Warrior Settings</h2>
+        <label>Display Name</label><input type="text" id="set-name">
+        <label>Visual Theme</label>
+        <select id="theme-select">
+            <option value="dark">Dark Slate</option>
+            <option value="light">Light Mode</option>
+            <option value="midnight">Midnight Gold</option>
+        </select>
+        <label>Font Style</label>
+        <select id="font-select">
+            <option value="sans-serif">Modern Sans</option>
+            <option value="serif">Classic Serif</option>
+            <option value="monospace">Warrior Mono</option>
+        </select>
+        <label>Animations</label>
+        <select id="anim-select">
+            <option value="0.3s">Normal</option>
+            <option value="0.1s">Fast</option>
+            <option value="0s">Off</option>
+        </select>
+        <button onclick="updateProfile()">Save Settings</button>
+        <button style="background:var(--danger); color:white;" onclick="leaveSquad()">Leave Squad</button>
         <button style="background:#475569; color:white;" onclick="auth.signOut()">Logout</button>
         <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; color:var(--text);">Close</button>
     </div></div>
 
-    <div id="achieveModal" class="modal" onclick="this.style.display='none'"><div class="modal-content" onclick="event.stopPropagation()"><h2>Trophy Room</h2><div id="achievements-full-list"></div><button onclick="document.getElementById('achieveModal').style.display='none'">Close</button></div></div>
+    <div id="achieveModal" class="modal" onclick="this.style.display='none'"><div class="modal-content" onclick="event.stopPropagation()"><h2>Trophies</h2><div id="achievements-full-list"></div><button onclick="document.getElementById('achieveModal').style.display='none'">Close</button></div></div>
 
     <script>
         const firebaseConfig = {
@@ -161,14 +172,14 @@
         ];
 
         let userState = null;
-        let sidequests = ["Solo: Walk 1 mile", "Squad: Group Workout", "Solo: No Sugar Today"];
+        let sidequests = ["Solo: Hold pose 60s", "Squad: Group FREEZE", "Solo: 10 Pushups", "Squad: Sync Walk"];
 
         auth.onAuthStateChanged(user => {
             if(user) {
                 db.ref('users/' + user.uid).on('value', snap => {
                     userState = snap.val();
                     if(userState) {
-                        applyVisuals(userState.theme);
+                        applyVisuals(userState.theme, userState.font, userState.animSpeed);
                         if(!userState.squadId) {
                             document.getElementById('auth-screen').classList.add('hidden');
                             document.getElementById('app-screen').classList.add('hidden');
@@ -192,28 +203,42 @@
             document.getElementById('display-name').innerText = userState.name;
             document.getElementById('xp-display').innerText = userState.xp;
             document.getElementById('user-rank').innerText = `Level ${userState.lvl}`;
-            document.getElementById('progress-bar').style.width = (userState.xp / 7) + '%';
+            document.getElementById('set-name').value = userState.name;
+            
+            setTimeout(() => { document.getElementById('progress-bar').style.width = (userState.xp / 7) + '%'; }, 100);
             
             // Render Tasks
             const today = new Date().toLocaleDateString();
-            const doneToday = userState.history ? userState.history.filter(h => h.d === today).map(h => h.t) : [];
+            const historyArr = userState.history || [];
+            const doneToday = historyArr.filter(h => h.d === today).map(h => h.t);
+            
             document.getElementById('task-container').innerHTML = taskDefs.map(item => `
                 <div class="task-item ${doneToday.includes(item.t) ? 'done' : ''}" onclick="logTask('${item.t}', event)">
                     <div style="display:flex; align-items:center; gap:15px;">
-                        <div style="font-size:1.6rem; font-weight:900; color:var(--primary);">${item.l}</div>
+                        <div style="font-size:1.6rem; font-weight:900; color:var(--primary); width:30px; text-align:center;">${item.l}</div>
                         <div><b>${item.t}</b><br><small style="opacity:0.7;">${item.s}</small></div>
                     </div>
                     <div class="streak-fire">🔥 ${userState.streaks?.[item.t] || 0}</div>
                 </div>`).join('');
 
+            // Wheel Setup
+            setupWheel();
+
             // Leaderboard
             db.ref('users').orderByChild('squadId').equalTo(userState.squadId).on('value', snap => {
                 const members = Object.values(snap.val() || {});
                 const lb = document.getElementById('leaderboard-list');
+                const fl = document.getElementById('friends-list');
                 lb.innerHTML = members.sort((a,b) => b.lvl - a.lvl || b.xp - a.xp).map((m, i) => `
                     <div class="lb-row">
                         <span>#${i+1} <b>${m.name}</b></span>
-                        <div><span style="opacity:0.6;">Lvl ${m.lvl}</span> <span class="xp-pill">${m.xp} XP</span></div>
+                        <div><span style="opacity:0.6; font-size:0.8rem;">Lvl ${m.lvl}</span> <span style="color:var(--primary); font-weight:bold; font-size:0.8rem;">${m.xp} XP</span></div>
+                    </div>`).join('');
+
+                fl.innerHTML = members.map(m => `
+                    <div class="date-header" onclick="this.nextElementSibling.classList.toggle('hidden')">👤 ${m.name}</div>
+                    <div class="hidden" style="margin-left:15px; border-left:2px solid var(--primary); padding-left:10px;">
+                        ${buildHistoryHtml(m.history)}
                     </div>`).join('');
             });
         }
@@ -221,51 +246,81 @@
         async function logTask(t, event) {
             const today = new Date().toLocaleDateString();
             if(userState.history && userState.history.some(h => h.t === t && h.d === today)) return;
-            
-            const n = prompt(`What did you do for ${t}?`);
-            if(!n) return;
+            const n = prompt(`Log for ${t}:`); if(!n) return;
 
-            // XP Animation
-            const rect = event.currentTarget.getBoundingClientRect();
-            showXPPopup(rect.left + rect.width/2, rect.top);
+            showXPPopup(event.clientX || event.touches.clientX, event.clientY || event.touches.clientY);
 
             let { xp, lvl, history, streaks } = userState;
-            xp += 15;
-            if(xp >= 700) { xp = 0; lvl++; confetti(); }
-            if(!streaks) streaks = {};
-            streaks[t] = (streaks[t] || 0) + 1;
-            if(!history) history = [];
-            history.unshift({ t, n, d: today });
-            
+            xp += 15; if(xp >= 700) { xp = 0; lvl++; confetti(); }
+            if(!streaks) streaks = {}; streaks[t] = (streaks[t] || 0) + 1;
+            if(!history) history = []; history.unshift({ t, n, d: today });
             await db.ref('users/' + auth.currentUser.uid).update({ xp, lvl, history, streaks });
         }
 
-        function showXPPopup(x, y) {
-            const popup = document.createElement('div');
-            popup.className = 'xp-popup';
-            popup.innerText = '+15 XP';
-            popup.style.left = x + 'px';
-            popup.style.top = y + 'px';
-            document.body.appendChild(popup);
-            setTimeout(() => popup.remove(), 1000);
+        function setupWheel() {
+            const wheel = document.getElementById('wheel'), arc = 360 / sidequests.length;
+            wheel.innerHTML = '';
+            sidequests.forEach((q, i) => {
+                const seg = document.createElement('div');
+                seg.className = 'segment';
+                seg.style.background = i % 2 === 0 ? '#22c55e' : '#fbbf24';
+                seg.style.transform = `rotate(${i * arc}deg) skewY(${arc - 90}deg)`;
+                wheel.appendChild(seg);
+            });
         }
 
-        function applyVisuals(theme) {
+        let curRot = 0;
+        function spinWheel() {
+            const btn = document.getElementById('spin-btn'); btn.disabled = true;
+            curRot += 1800 + (Math.random() * 360);
+            document.getElementById('wheel').style.transform = `rotate(${curRot}deg)`;
+            setTimeout(() => { 
+                confetti(); btn.disabled = false;
+                const index = Math.floor(((360 - (curRot % 360)) % 360) / (360 / sidequests.length));
+                document.getElementById('quest-display').innerText = sidequests[index];
+            }, 3000);
+        }
+
+        function showXPPopup(x, y) {
+            const p = document.createElement('div'); p.className = 'xp-popup'; p.innerText = '+15 XP';
+            p.style.left = (x - 20) + 'px'; p.style.top = (y - 20) + 'px';
+            document.body.appendChild(p); setTimeout(() => p.remove(), 1000);
+        }
+
+        function applyVisuals(theme, font, anim) {
             document.body.className = theme === 'light' ? 'light-mode' : (theme === 'midnight' ? 'midnight-mode' : '');
+            document.body.style.setProperty('--font-main', font || 'sans-serif');
+            document.body.style.setProperty('--anim-speed', anim || '0.3s');
+            document.getElementById('theme-select').value = theme || 'dark';
+            document.getElementById('font-select').value = font || 'sans-serif';
+            document.getElementById('anim-select').value = anim || '0.3s';
+        }
+
+        async function updateProfile() {
+            await db.ref('users/' + auth.currentUser.uid).update({
+                name: document.getElementById('set-name').value,
+                theme: document.getElementById('theme-select').value,
+                font: document.getElementById('font-select').value,
+                animSpeed: document.getElementById('anim-select').value
+            });
+        }
+
+        function buildHistoryHtml(arr) {
+            if(!arr || !arr.length) return "<p style='padding:5px; opacity:0.5;'>No logs.</p>";
+            return arr.slice(0, 5).map(h => `<p style='font-size:0.75rem; margin:5px 0;'><b>${h.t}:</b> ${h.n} <span style='opacity:0.5'>(${h.d})</span></p>`).join('');
         }
 
         async function handleAuth(type) {
             const e = document.getElementById('email').value, p = document.getElementById('pass').value;
             if(type === 'signup') {
                 const res = await auth.createUserWithEmailAndPassword(e, p);
-                await db.ref('users/' + res.user.uid).set({ name: "Warrior", xp: 0, lvl: 1, history: [], streaks: {}, squadId: "", theme: "dark" });
+                await db.ref('users/' + res.user.uid).set({ name: "Warrior", xp: 0, lvl: 1, history: [], streaks: {}, squadId: "", theme: "dark", font: "sans-serif", animSpeed: "0.3s" });
             } else { await auth.signInWithEmailAndPassword(e, p); }
         }
 
         async function createSquad() { const code = Math.random().toString(36).substring(2, 8).toUpperCase(); await db.ref('users/' + auth.currentUser.uid).update({ squadId: code }); }
         async function joinSquad() { const code = document.getElementById('squad-input').value.toUpperCase(); await db.ref('users/' + auth.currentUser.uid).update({ squadId: code }); }
         async function leaveSquad() { if(confirm("Leave squad?")) await db.ref('users/' + auth.currentUser.uid).update({ squadId: "" }); }
-        async function updateProfile() { await db.ref('users/' + auth.currentUser.uid).update({ name: document.getElementById('set-name').value, theme: document.getElementById('theme-select').value }); }
     </script>
 </body>
 </html>
