@@ -3,111 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Godliness MVP</title>
-    <link rel="manifest" href="manifest.json">
+    <title>GODLINESS Ascension MVP</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #fbbf24; --secondary: #22c55e; --accent: #3b82f6; --danger: #ef4444; }
-        body { background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
-        .container { width: 100%; max-width: 400px; padding-bottom: 80px; }
-        .box, .task-item { background: var(--card); border-radius: 20px; padding: 18px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; }
+        .container { width: 100%; max-width: 400px; padding-bottom: 50px; }
+        .stats-card, .box, .task-item { background: var(--card); border-radius: 20px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.05); }
         input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 12px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
-        button { background: var(--primary); border: none; padding: 14px; border-radius: 50px; font-weight: bold; width: 100%; cursor: pointer; color: #000; margin-top: 10px; }
-        .hidden { display: none !important; }
-        
-        /* Task List */
-        .task-item { display: flex; align-items: center; gap: 15px; cursor: pointer; transition: 0.2s; }
-        .task-item.done { border-color: var(--secondary); background: rgba(34, 197, 94, 0.1); opacity: 0.8; }
-        .letter { font-size: 1.5rem; font-weight: 900; color: var(--primary); min-width: 30px; text-align: center; }
-
-        /* Wheel */
-        .wheel-outer { position: relative; width: 200px; height: 200px; margin: 15px auto; }
-        #wheel { width: 100%; height: 100%; border-radius: 50%; border: 4px solid var(--accent); position: relative; overflow: hidden; transition: transform 3s cubic-bezier(0.1, 0, 0.1, 1); }
-        .segment { position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; }
-        .pointer { width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 20px solid var(--danger); position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 10; }
-
-        /* Tabs & Lists */
-        .lb-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
-        .date-header { background: rgba(255,255,255,0.1); padding: 10px; margin-top: 8px; border-radius: 10px; font-weight: bold; font-size: 0.9rem; cursor: pointer; }
-        .history-content { padding: 10px; font-size: 0.85rem; border-left: 2px solid var(--accent); margin-left: 10px; }
-        
-        /* Modal */
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-        .modal-content { background: var(--card); padding: 20px; border-radius: 25px; width: 90%; max-height: 80vh; overflow-y: auto; }
-        .achieve-item { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; margin-bottom: 8px; border-left: 4px solid #444; }
-        .achieve-item.unlocked { border-left-color: var(--primary); background: rgba(251, 191, 36, 0.1); }
+        .modal-content { background: var(--card); padding: 20px; border-radius: 25px; width: 90%; max-width: 380px; max-height: 80vh; display: flex; flex-direction: column; }
+        .scroll-area { overflow-y: auto; flex-grow: 1; margin: 15px 0; }
+        .progress-container { background: #334155; height: 12px; border-radius: 10px; margin: 10px 0; overflow: hidden; }
+        #progress-bar { background: var(--primary); height: 100%; width: 0%; transition: width 0.4s; }
+        .task-item { display: flex; align-items: center; gap: 15px; cursor: pointer; position: relative; border: 2px solid transparent; transition: 0.2s; }
+        .task-item.done { border-color: var(--secondary); background: rgba(34, 197, 94, 0.1); }
+        .letter { font-size: 1.5rem; font-weight: 900; color: var(--primary); min-width: 30px; text-align: center; }
+        .streak-fire { position: absolute; right: 15px; color: #f97316; font-weight: bold; font-size: 0.8rem; }
+        .wheel-outer { position: relative; width: 220px; height: 220px; margin: 15px auto; }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; border: 5px solid var(--accent); position: relative; overflow: hidden; transition: transform 3s cubic-bezier(0.1, 0, 0.1, 1); background: var(--accent); }
+        .segment { position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; }
+        .pointer { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 25px solid #ef4444; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 100; }
+        .quest-box { background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; text-align: left; border-left: 4px solid var(--primary); margin-bottom: 8px; }
+        .quest-label { font-size: 0.65rem; font-weight: 900; color: var(--accent); text-transform: uppercase; }
+        button { background: var(--primary); border: none; padding: 12px 18px; border-radius: 50px; font-weight: bold; color: #000; cursor: pointer; width: 100%; }
+        .lb-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #334155; }
+        .date-header { cursor: pointer; background: rgba(255,255,255,0.1); padding: 10px; margin-top: 5px; border-radius: 10px; font-weight: bold; }
+        .hidden { display: none !important; }
+        .indent { margin-left: 15px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
         
         <div id="auth-screen">
-            <h1 style="color:var(--primary); text-align:center; font-size:2.5rem;">GODLINESS</h1>
+            <h1 style="text-align:center; color:var(--primary);">GODLINESS</h1>
             <div class="box">
                 <input type="email" id="email" placeholder="Email">
                 <input type="password" id="pass" placeholder="Password">
                 <button onclick="handleAuth('login')">Login</button>
-                <button style="background:transparent; color:var(--primary); border:1px solid var(--primary);" onclick="handleAuth('signup')">Sign Up</button>
+                <button style="background:transparent; color:var(--primary); border:1px solid var(--primary); margin-top:10px;" onclick="handleAuth('signup')">Sign Up</button>
             </div>
         </div>
 
         <div id="squad-screen" class="hidden">
-            <h2 style="text-align:center;">Warrior Profile</h2>
+            <h2 style="text-align:center;">Squad Setup</h2>
             <div class="box">
-                <input type="text" id="squad-input" placeholder="Enter 6-Digit Squad Code">
+                <input type="text" id="squad-input" placeholder="Enter 6-Digit Code">
                 <button onclick="joinSquad()">Join Squad</button>
-                <div style="text-align:center; margin:15px 0; opacity:0.5;">— OR —</div>
+                <p style="text-align:center; opacity:0.5;">— OR —</p>
                 <button style="background:var(--accent); color:white;" onclick="createSquad()">Create New Squad</button>
             </div>
         </div>
 
         <div id="app-screen" class="hidden">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <div><small style="opacity:0.6;">SQUAD CODE</small><br><b id="squad-code-display" style="color:var(--primary);"></b></div>
-                <button onclick="document.getElementById('achieveModal').style.display='flex'" style="width:auto; padding:8px 15px;">🏆 Trophies</button>
+                <div id="display-name" style="font-weight:bold;">Warrior</div>
+                <button onclick="document.getElementById('achieveModal').style.display='flex'" style="width:auto;">🏆 Trophies</button>
             </div>
 
-            <div class="box" style="text-align:center;">
-                <h1 id="lvl-display" style="font-size:3rem; margin:0; color:var(--primary);">1</h1>
-                <div style="background:#334155; height:8px; border-radius:10px; margin:10px 0; overflow:hidden;">
-                    <div id="xp-bar" style="background:var(--primary); height:100%; width:0%; transition:width 0.5s;"></div>
-                </div>
-                <small>XP: <span id="xp-val">0</span> / 700</small>
+            <div class="stats-card" style="text-align: center;">
+                <h2 id="user-rank">Level 1</h2>
+                <div class="progress-container"><div id="progress-bar"></div></div>
+                <small>XP: <span id="xp-display">0</span> / 700</small>
             </div>
 
             <div id="task-container"></div>
 
-            <div class="box" style="text-align:center;">
+            <div class="box" style="text-align: center;">
                 <h3>Sidequest Wheel</h3>
                 <div class="wheel-outer"><div class="pointer"></div><div id="wheel"></div></div>
-                <div id="quest-display" style="min-height:50px; margin:10px 0;">Spin for a challenge!</div>
-                <button id="spin-btn" onclick="spinWheel()">SPIN WHEEL</button>
+                <div id="quest-display"><p style="opacity:0.5;">Ready to spin?</p></div>
+                <div style="display:flex; gap:10px;">
+                    <button id="spin-btn" onclick="spinWheel()">SPIN</button>
+                    <button onclick="document.getElementById('questModal').style.display='flex'" style="background:#475569; color:white;">Edit</button>
+                </div>
             </div>
 
             <div class="box">
-                <h3 style="margin-top:0;">Leaderboard</h3>
-                <div id="leaderboard"></div>
+                <h3 style="text-align:center;">Squad Leaderboard</h3>
+                <div id="leaderboard-list"></div>
+                <div style="text-align:center; margin-top:10px;"><small>Code: <b id="squad-code-display" style="color:var(--primary)"></b></small></div>
             </div>
 
             <div class="box">
-                <h3 style="margin-top:0;">Squad Activity</h3>
-                <div id="squad-history"></div>
+                <h3 style="text-align:center;">Squad Activity</h3>
+                <div id="friends-list"></div>
             </div>
 
-            <button style="background:transparent; color:var(--danger); font-size:0.8rem;" onclick="auth.signOut()">Logout Account</button>
+            <button style="background:var(--danger); color:white; margin-top: 20px;" onclick="auth.signOut()">LOGOUT</button>
         </div>
     </div>
 
-    <div id="achieveModal" class="modal" onclick="this.style.display='none'">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h2>Trophy Room</h2>
-            <div id="achievements-list"></div>
-            <button onclick="document.getElementById('achieveModal').style.display='none'">Close</button>
-        </div>
-    </div>
+    <div id="achieveModal" class="modal" onclick="this.style.display='none'"><div class="modal-content" onclick="event.stopPropagation()"><h2>Trophy Room</h2><div class="scroll-area" id="achievements-full-list"></div><button onclick="document.getElementById('achieveModal').style.display='none'">Close</button></div></div>
+    <div id="questModal" class="modal" onclick="this.style.display='none'"><div class="modal-content" onclick="event.stopPropagation()"><h3>Edit Quests</h3><div style="display:flex; gap:5px; margin-bottom:10px;"><input id="new-quest-input" placeholder="Solo | Squad" style="flex:1;"><button onclick="addCustomQuest()" style="width:auto;">Add</button></div><div class="scroll-area" id="quest-edit-list"></div><button onclick="document.getElementById('questModal').style.display='none'">Save</button></div></div>
 
     <script>
         const firebaseConfig = {
@@ -125,23 +117,14 @@
 
         const taskDefs = [
             {l:'G', t:'Gratitude', s:'Name 3 blessings'}, {l:'O', t:'Outreach', s:'Kindness/service'},
-            {l:'D', t:'Discipline', s:'Workout/Hard task'}, {l:'L', t:'Listen', s:'Quiet time/Prayer'},
+            {l:'D', t:'Discipline', s:'Workout/hard task'}, {l:'L', t:'Listen', s:'Quiet time/prayer'},
             {l:'I', t:'Imagine', s:'Creative work'}, {l:'N', t:'New Ground', s:'Learn a fact'},
-            {l:'E', t:'Examine', s:'Scripture/Study'}, {l:'S', t:'Sidequest', s:'Spin the Wheel'},
+            {l:'E', t:'Examine', s:'Scripture/study'}, {l:'S', t:'Sidequest', s:'Spin the wheel'},
             {l:'S', t:'Self-Reflect', s:'Nightly recap'}
         ];
 
-        const sidequests = [
-            "Solo: Mystery Meal | Squad: Random Cook-off",
-            "Solo: Trade paperclip | Squad: Trade up items 20m",
-            "Solo: Weird $5 shirt | Squad: Style each other",
-            "Solo: Hold pose 60s | Squad: Group FREEZE 2m",
-            "Solo: Walk 1 mile | Squad: Secret Service Escort"
-        ];
-
-        let currentUser = null;
-        let squadId = null;
-        let userData = null;
+        let userState = null;
+        let sidequests = ["Solo: Mystery Meal | Squad: Cook-off", "Solo: Trade paperclip | Squad: Trade up", "Solo: Weird $5 shirt | Squad: Style", "Solo: Hold pose 60s | Squad: Group FREEZE", "Solo: Walk 1 mile | Squad: VIP Escort"];
 
         // AUTH
         async function handleAuth(type) {
@@ -150,39 +133,34 @@
             try {
                 if(type === 'signup') {
                     const res = await auth.createUserWithEmailAndPassword(e, p);
-                    const name = prompt("Enter Display Name:");
-                    await db.collection('users').doc(res.user.uid).set({ name: name || "Warrior", xp: 0, lvl: 1, squadId: null, history: [], lastActive: "" });
-                } else {
-                    await auth.signInWithEmailAndPassword(e, p);
-                }
+                    const name = prompt("Name?");
+                    await db.collection('users').doc(res.user.uid).set({
+                        name: name || "Warrior", xp: 0, lvl: 1, history: [], streaks: {}, squadId: null, lastActive: ""
+                    });
+                } else { await auth.signInWithEmailAndPassword(e, p); }
             } catch(err) { alert(err.message); }
         }
 
         auth.onAuthStateChanged(user => {
-            if(user) {
-                currentUser = user;
-                document.getElementById('auth-screen').classList.add('hidden');
-                initUser();
-            } else {
-                location.reload();
+            if(user) { loadUserData(user.uid); }
+            else { 
+                document.getElementById('auth-screen').classList.remove('hidden');
+                document.getElementById('app-screen').classList.add('hidden');
+                document.getElementById('squad-screen').classList.add('hidden');
             }
         });
 
-        async function initUser() {
-            const doc = await db.collection('users').doc(currentUser.uid).get();
-            userData = doc.data();
-            if(userData.squadId) {
-                squadId = userData.squadId;
-                showApp();
-            } else {
-                document.getElementById('squad-screen').classList.remove('hidden');
-            }
+        async function loadUserData(uid) {
+            const doc = await db.collection('users').doc(uid).get();
+            userState = doc.data();
+            document.getElementById('auth-screen').classList.add('hidden');
+            if(userState.squadId) { showApp(); } else { document.getElementById('squad-screen').classList.remove('hidden'); }
         }
 
         async function createSquad() {
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
             await db.collection('squads').doc(code).set({ created: Date.now() });
-            await db.collection('users').doc(currentUser.uid).update({ squadId: code });
+            await db.collection('users').doc(auth.currentUser.uid).update({ squadId: code });
             location.reload();
         }
 
@@ -190,35 +168,32 @@
             const code = document.getElementById('squad-input').value.toUpperCase();
             const s = await db.collection('squads').doc(code).get();
             if(s.exists()) {
-                await db.collection('users').doc(currentUser.uid).update({ squadId: code });
+                await db.collection('users').doc(auth.currentUser.uid).update({ squadId: code });
                 location.reload();
-            } else { alert("Not found"); }
+            } else { alert("Squad not found"); }
         }
 
         function showApp() {
             document.getElementById('squad-screen').classList.add('hidden');
             document.getElementById('app-screen').classList.remove('hidden');
-            document.getElementById('squad-code-display').innerText = squadId;
+            document.getElementById('squad-code-display').innerText = userState.squadId;
             setupWheel();
 
             // Real-time Sync
-            db.collection('users').where('squadId', '==', squadId).onSnapshot(snap => {
-                const lb = document.getElementById('leaderboard');
-                const hist = document.getElementById('squad-history');
-                lb.innerHTML = ''; hist.innerHTML = '';
+            db.collection('users').where('squadId', '==', userState.squadId).onSnapshot(snap => {
+                const lb = document.getElementById('leaderboard-list');
+                const fl = document.getElementById('friends-list');
+                lb.innerHTML = ''; fl.innerHTML = '';
                 let members = [];
 
                 snap.forEach(d => {
                     const m = d.data();
                     members.push(m);
-                    if(d.id === currentUser.uid) {
-                        userData = m;
-                        renderMyStats();
-                    }
-                    // Add to Squad History
-                    if(m.history && m.history.length > 0) {
-                        hist.innerHTML += `<div class="date-header" onclick="this.nextElementSibling.classList.toggle('hidden')">👤 ${m.name}</div>
-                        <div class="hidden history-content">${m.history.slice(0,5).map(h => `<div><b>${h.t}:</b> ${h.n}</div>`).join('')}</div>`;
+                    if(d.id === auth.currentUser.uid) { userState = m; renderMyStats(); }
+                    
+                    if(m.name !== userState.name) {
+                        fl.innerHTML += `<div class="date-header" onclick="this.nextElementSibling.classList.toggle('hidden')">👤 ${m.name} (LVL ${m.lvl})</div>
+                        <div class="hidden indent">${buildHistoryHtml(m.history)}</div>`;
                     }
                 });
 
@@ -230,34 +205,45 @@
         }
 
         function renderMyStats() {
-            document.getElementById('lvl-display').innerText = userData.lvl;
-            document.getElementById('xp-val').innerText = userData.xp;
-            document.getElementById('xp-bar').style.width = (userData.xp / 700 * 100) + '%';
+            document.getElementById('display-name').innerText = userState.name;
+            document.getElementById('xp-display').innerText = userState.xp;
+            document.getElementById('user-rank').innerText = `Level ${userState.lvl}`;
+            document.getElementById('progress-bar').style.width = (userState.xp / 7) + '%';
             
             const today = new Date().toLocaleDateString();
-            const doneToday = userData.history.filter(h => h.d === today).map(h => h.t);
-            
+            const doneToday = userState.history.filter(h => h.d === today).map(h => h.t);
+
             document.getElementById('task-container').innerHTML = taskDefs.map(item => `
                 <div class="task-item ${doneToday.includes(item.t) ? 'done' : ''}" onclick="logTask('${item.t}')">
                     <div class="letter">${item.l}</div>
                     <div><b>${item.t}</b><br><small style="opacity:0.7;">${item.s}</small></div>
+                    <div class="streak-fire">🔥 ${userState.streaks[item.t] || 0}</div>
                 </div>`).join('');
         }
 
         async function logTask(t) {
             const today = new Date().toLocaleDateString();
-            const doneToday = userData.history.filter(h => h.d === today).map(h => h.t);
-            if(doneToday.includes(t)) return;
+            if(userState.history.some(h => h.t === t && h.d === today)) return;
 
-            const n = prompt(`Entry for ${t}:`);
+            const n = prompt(`Log entry for ${t}:`);
             if(!n) return;
 
-            let { xp, lvl, history } = userData;
-            xp += 50;
+            let { xp, lvl, history, streaks } = userState;
+            xp += 15;
             if(xp >= 700) { xp = 0; lvl++; confetti(); }
+            streaks[t] = (streaks[t] || 0) + 1;
             history.unshift({ t, n, d: today });
 
-            await db.collection('users').doc(currentUser.uid).update({ xp, lvl, history });
+            await db.collection('users').doc(auth.currentUser.uid).update({ xp, lvl, history, streaks });
+        }
+
+        function buildHistoryHtml(arr) {
+            if(!arr || !arr.length) return "<p style='padding:10px; opacity:0.5;'>No logs.</p>";
+            const groups = {}; arr.forEach(h => { if(!groups[h.d]) groups[h.d] = []; groups[h.d].push(h); });
+            return Object.keys(groups).sort((a,b)=>new Date(b)-new Date(a)).map(d => `
+                <div class="date-header" onclick="this.nextElementSibling.classList.toggle('hidden')">📅 ${d}</div>
+                <div class="hidden">${groups[d].map(h=>`<p style="font-size:0.8rem; margin:5px 15px;"><b>${h.t}:</b> ${h.n}</p>`).join('')}</div>
+            `).join('');
         }
 
         function setupWheel() {
@@ -282,21 +268,19 @@
             curRot += 1440 + ((sidequests.length - winIdx) * arc - (arc / 2));
             document.getElementById('wheel').style.transform = `rotate(${curRot}deg)`;
             setTimeout(() => {
-                document.getElementById('quest-display').innerText = sidequests[winIdx];
+                const [so, sq] = sidequests[winIdx].split('|').map(s => s.trim());
+                document.getElementById('quest-display').innerHTML = `<div class="quest-box"><div class="quest-label">SOLO</div><div>${so}</div></div><div class="quest-box"><div class="quest-label">SQUAD</div><div>${sq || 'None'}</div></div>`;
                 btn.disabled = false;
                 confetti();
             }, 3000);
         }
 
+        function addCustomQuest() { const i = document.getElementById('new-quest-input'); if(i.value){ sidequests.push(i.value); i.value=""; setupWheel(); renderQuestList(); } }
+        function renderQuestList() { document.getElementById('quest-edit-list').innerHTML = sidequests.map((q,i)=>`<div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #444;"><span>${q}</span><span onclick="sidequests.splice(${i},1); renderQuestList(); setupWheel();" style="color:red; cursor:pointer;">✖</span></div>`).join(''); }
+        
         function renderTrophies() {
-            const trophies = [
-                {n: "Awakened", d: "Logged first win", c: userData.history.length > 0},
-                {n: "High Roller", d: "Reached Level 5", c: userData.lvl >= 5},
-                {n: "Mischief", d: "Completed 5 Sidequests", c: userData.history.filter(h => h.t === 'Sidequest').length >= 5}
-            ];
-            document.getElementById('achievements-list').innerHTML = trophies.map(a => `
-                <div class="achieve-item ${a.c ? 'unlocked' : ''}"><b>${a.c ? '✅' : '🔒'} ${a.n}</b><br><small>${a.d}</small></div>
-            `).join('');
+            const trophies = [{n: "Awakened", d: "First win", c: userState.history.length >= 1}, {n: "Level 5", d: "Ascended", c: userState.lvl >= 5}];
+            document.getElementById('achievements-full-list').innerHTML = trophies.map(a => `<div class="achieve-item ${a.c?'unlocked':''}"><b>${a.c?'✅':'🔒'} ${a.n}</b><br><small>${a.d}</small></div>`).join('');
         }
     </script>
 </body>
