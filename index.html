@@ -20,24 +20,23 @@
         .hidden { display: none !important; }
         .container { width: 100%; max-width: 400px; padding-bottom: 50px; }
         
+        /* Fixed Login Inputs */
+        #auth-screen .box { max-width: 320px; margin: 0 auto; }
+
         .box, .task-item, .friend-card { background: var(--card); border-radius: 20px; padding: 15px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
         
-        /* Tasks */
         .task-item { display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: 0.2s; }
         .task-item.done { border: 2px solid var(--secondary); background: rgba(34, 197, 94, 0.1); }
         .streak-fire { color: #f97316; font-weight: bold; flex-shrink: 0; }
 
-        /* Squad Dropdowns */
         .friend-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 5px 0; }
         .history-content { margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; }
         
-        /* Tab Scroll */
         .tab-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
         .tab-scroll::-webkit-scrollbar { display: none; }
         .day-btn { padding: 5px 12px; border-radius: 10px; font-size: 0.7rem; background: rgba(255,255,255,0.1); border: none; color: inherit; cursor: pointer; white-space: nowrap; }
         .day-btn.active { background: var(--primary); color: #000; font-weight: bold; }
 
-        /* Wheel & Progress */
         .wheel-outer { position: relative; width: 180px; height: 180px; margin: 15px auto; }
         #wheel { width: 100%; height: 100%; border-radius: 50%; border: 4px solid var(--accent); transition: transform 3s cubic-bezier(0.1, 0, 0.1, 1); position: relative; overflow: hidden; }
         .segment { position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; }
@@ -45,18 +44,19 @@
         #progress-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.5s; }
 
         button { background: var(--primary); border: none; padding: 12px; border-radius: 50px; font-weight: 800; color: #000; cursor: pointer; width: 100%; margin: 5px 0; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; border: none; background: rgba(0,0,0,0.2); color: #fff; box-sizing: border-box; }
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal-content { background: var(--card); padding: 25px; border-radius: 25px; width: 90%; max-width: 380px; }
     </style>
 </head>
-<body id="body-tag">
+<body>
     <div class="container">
         
         <div id="auth-screen">
-            <h1 style="text-align:center; color:var(--primary);">GODLINESS</h1>
+            <h1 style="text-align:center; color:var(--primary); margin-top: 40px;">GODLINESS</h1>
             <div class="box">
-                <input type="email" id="email" placeholder="Email" style="width:100%; padding:10px; margin:5px 0; border-radius:10px; border:none;">
-                <input type="password" id="pass" placeholder="Password" style="width:100%; padding:10px; margin:5px 0; border-radius:10px; border:none;">
+                <input type="email" id="email" placeholder="Email">
+                <input type="password" id="pass" placeholder="Password">
                 <button onclick="handleAuth('login')">Login</button>
             </div>
         </div>
@@ -64,7 +64,7 @@
         <div id="app-screen" class="hidden">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h2 style="margin:0;">GODLINESS</h2>
-                <button onclick="document.getElementById('settingsModal').style.display='flex'" style="width:auto; background:none; font-size:1.5rem;">⚙️</button>
+                <button onclick="openSettings()" style="width:auto; background:none; font-size:1.5rem;">⚙️</button>
             </div>
 
             <div class="box" style="text-align:center;">
@@ -99,20 +99,23 @@
 
     <div id="settingsModal" class="modal"><div class="modal-content">
         <h3>Warrior Settings</h3>
+        <label>Warrior Name</label>
+        <input type="text" id="set-name" placeholder="Enter name...">
         <label>Theme</label>
-        <select id="theme-sel" onchange="applyTheme(this.value)" style="width:100%; padding:10px; margin:10px 0; border-radius:10px;">
+        <select id="theme-sel" onchange="applyTheme(this.value)">
             <option value="dark">Dark Slate</option>
             <option value="light">Light Mode</option>
             <option value="midnight">Midnight Gold</option>
         </select>
-        <button onclick="auth.signOut()" style="background:var(--danger); color:white;">Logout</button>
-        <button onclick="document.getElementById('settingsModal').style.display='none'">Close</button>
+        <button onclick="saveProfile()">Save Changes</button>
+        <button onclick="auth.signOut()" style="background:var(--danger); color:white; margin-top: 15px;">Logout</button>
+        <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; color:inherit;">Close</button>
     </div></div>
 
     <div id="questModal" class="modal"><div class="modal-content">
         <h3>Edit Quests</h3>
-        <div id="quest-edit-list"></div>
-        <input type="text" id="new-q" placeholder="Add custom..." style="width:100%; padding:10px; margin:10px 0; border-radius:10px;">
+        <div id="quest-edit-list" style="max-height: 200px; overflow-y: auto; margin-bottom: 10px;"></div>
+        <input type="text" id="new-q" placeholder="Add custom...">
         <button onclick="addQ()">Add</button>
         <button onclick="document.getElementById('questModal').style.display='none'">Close</button>
     </div></div>
@@ -145,6 +148,7 @@
         let userState = null;
         let sidequests = ["10 Pushups", "No Sugar", "Read 5 Pages"];
         let activeTabs = {};
+        let expandedUsers = {}; // Persistent dropdown state
 
         auth.onAuthStateChanged(user => {
             if(user) {
@@ -171,7 +175,6 @@
             const today = new Date().toLocaleDateString();
             const doneToday = (userState.history || []).filter(h => h.d === today).map(h => h.t);
 
-            // Tasks with Descriptions & Undo
             document.getElementById('task-list').innerHTML = taskDefs.map(item => `
                 <div class="task-item ${doneToday.includes(item.t) ? 'done' : ''}" onclick="toggleTask('${item.t}')">
                     <div style="padding-right:10px;">
@@ -181,18 +184,15 @@
                     <div class="streak-fire">🔥 ${userState.streaks?.[item.t] || 0}</div>
                 </div>`).join('');
 
-            // Squad Dropdowns & Leaderboard
             db.ref('users').orderByChild('squadId').equalTo(userState.squadId).on('value', snap => {
                 const members = Object.values(snap.val() || {}).sort((a,b) => b.lvl - a.lvl || b.xp - a.xp);
                 
-                // Leaderboard
                 document.getElementById('leaderboard-ui').innerHTML = members.map((m,i) => `
                     <div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
                         <span>#${i+1} <b>${m.name}</b></span>
                         <span style="font-size:0.8rem; opacity:0.7;">Lvl ${m.lvl} (${m.xp} XP)</span>
                     </div>`).join('');
 
-                // Squad Dropdowns
                 const squadUi = document.getElementById('squad-ui');
                 squadUi.innerHTML = '';
                 members.forEach(m => {
@@ -204,13 +204,13 @@
 
                     squadUi.innerHTML += `
                         <div class="friend-card">
-                            <div class="friend-header" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                            <div class="friend-header" onclick="toggleDropdown('${mId}')">
                                 <b>👤 ${m.name}</b>
-                                <span style="font-size:0.75rem; color:var(--primary);">Lvl ${m.lvl} ▼</span>
+                                <span style="font-size:0.75rem; color:var(--primary);">Lvl ${m.lvl} ${expandedUsers[mId] ? '▲' : '▼'}</span>
                             </div>
-                            <div class="history-content hidden">
+                            <div id="drop-${mId}" class="history-content ${expandedUsers[mId] ? '' : 'hidden'}">
                                 <div class="tab-scroll">
-                                    ${dates.map(d => `<button class="day-btn ${activeTabs[mId]===d?'active':''}" onclick="event.stopPropagation(); setTab('${mId}','${d}')">${d}</button>`).join('')}
+                                    ${dates.map(d => `<button class="day-btn ${activeTabs[mId]===d?'active':''}" onclick="setTab('${mId}','${d}')">${d}</button>`).join('')}
                                 </div>
                                 <div style="font-size:0.8rem;">
                                     ${(hist[activeTabs[mId]] || []).map(h => `<div>• <b>${h.t}:</b> ${h.n}</div>`).join('') || "No logs"}
@@ -222,10 +222,19 @@
             renderWheel();
         }
 
+        function toggleDropdown(mId) {
+            expandedUsers[mId] = !expandedUsers[mId];
+            renderAll();
+        }
+
+        function setTab(mId, date) { 
+            activeTabs[mId] = date; 
+            renderAll(); 
+        }
+
         async function toggleTask(t) {
             const today = new Date().toLocaleDateString();
             const existingIdx = (userState.history || []).findIndex(h => h.t === t && h.d === today);
-
             if(existingIdx > -1) {
                 if(confirm(`Undo ${t} and remove 15 XP?`)) {
                     let { xp, history, streaks } = userState;
@@ -245,11 +254,21 @@
             }
         }
 
-        function setTab(mId, date) { activeTabs[mId] = date; renderAll(); }
+        function openSettings() {
+            document.getElementById('set-name').value = userState.name || "";
+            document.getElementById('theme-sel').value = userState.theme || "dark";
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        async function saveProfile() {
+            const newName = document.getElementById('set-name').value;
+            const newTheme = document.getElementById('theme-sel').value;
+            await db.ref('users/' + auth.currentUser.uid).update({ name: newName, theme: newTheme });
+            document.getElementById('settingsModal').style.display = 'none';
+        }
 
         function applyTheme(t) {
             document.body.className = t === 'light' ? 'light-mode' : (t === 'midnight' ? 'midnight-mode' : '');
-            db.ref('users/' + auth.currentUser.uid).update({ theme: t });
         }
 
         function renderWheel() {
@@ -270,7 +289,10 @@
         }
 
         function addQ() { const v = document.getElementById('new-q').value; if(v) { sidequests.push(v); document.getElementById('new-q').value=''; renderWheel(); } }
-        async function handleAuth(type) { const e = document.getElementById('email').value, p = document.getElementById('pass').value; if(type === 'login') await auth.signInWithEmailAndPassword(e, p); }
+        async function handleAuth(type) { 
+            const e = document.getElementById('email').value, p = document.getElementById('pass').value; 
+            if(type === 'login') await auth.signInWithEmailAndPassword(e, p); 
+        }
     </script>
 </body>
 </html>
