@@ -3,20 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GODLINESS Ascension MVP</title>
+    <title>GODLINESS Ascension</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #fbbf24; --secondary: #22c55e; --accent: #3b82f6; --danger: #ef4444; }
+        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #fbbf24; --secondary: #22c55e; --accent: #3b82f6; }
         body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; }
         .container { width: 100%; max-width: 400px; padding-bottom: 50px; }
         .stats-card, .box, .task-item { background: var(--card); border-radius: 20px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.05); }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 12px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal-content { background: var(--card); padding: 20px; border-radius: 25px; width: 90%; max-width: 380px; max-height: 80vh; display: flex; flex-direction: column; }
-        .scroll-area { overflow-y: auto; flex-grow: 1; margin: 15px 0; }
+        .scroll-area { overflow-y: auto; flex-grow: 1; padding-right: 5px; margin: 15px 0; }
         .progress-container { background: #334155; height: 12px; border-radius: 10px; margin: 10px 0; overflow: hidden; }
         #progress-bar { background: var(--primary); height: 100%; width: 0%; transition: width 0.4s; }
         .task-item { display: flex; align-items: center; gap: 15px; cursor: pointer; position: relative; border: 2px solid transparent; transition: 0.2s; }
@@ -27,42 +25,32 @@
         #wheel { width: 100%; height: 100%; border-radius: 50%; border: 5px solid var(--accent); position: relative; overflow: hidden; transition: transform 3s cubic-bezier(0.1, 0, 0.1, 1); background: var(--accent); }
         .segment { position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; }
         .pointer { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 25px solid #ef4444; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 100; }
+        #quest-display { min-height: 140px; margin: 10px 0; display: flex; flex-direction: column; justify-content: center; }
         .quest-box { background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; text-align: left; border-left: 4px solid var(--primary); margin-bottom: 8px; }
         .quest-label { font-size: 0.65rem; font-weight: 900; color: var(--accent); text-transform: uppercase; }
-        button { background: var(--primary); border: none; padding: 12px 18px; border-radius: 50px; font-weight: bold; color: #000; cursor: pointer; width: 100%; }
+        button { background: var(--primary); border: none; padding: 10px 18px; border-radius: 50px; font-weight: bold; color: #000; cursor: pointer; }
         .lb-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #334155; }
-        .date-header { cursor: pointer; background: rgba(255,255,255,0.1); padding: 10px; margin-top: 5px; border-radius: 10px; font-weight: bold; }
-        .hidden { display: none !important; }
+        .date-header { cursor: pointer; background: rgba(255,255,255,0.1); padding: 10px; margin-top: 5px; border-radius: 10px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .friend-header { background: var(--accent); color: white; margin-bottom: 5px; }
+        .achieve-item { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; font-size: 0.8rem; margin-bottom: 8px; border-left: 4px solid #444; }
+        .achieve-item.unlocked { border-left-color: var(--primary); background: rgba(251, 191, 36, 0.1); }
+        .hidden { display: none; }
         .indent { margin-left: 15px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
-        
-        <div id="auth-screen">
-            <h1 style="text-align:center; color:var(--primary);">GODLINESS</h1>
-            <div class="box">
-                <input type="email" id="email" placeholder="Email">
-                <input type="password" id="pass" placeholder="Password">
-                <button onclick="handleAuth('login')">Login</button>
-                <button style="background:transparent; color:var(--primary); border:1px solid var(--primary); margin-top:10px;" onclick="handleAuth('signup')">Sign Up</button>
-            </div>
+        <div id="setup-screen" class="box" style="text-align:center;">
+            <h1 style="color:var(--primary);">GODLINESS</h1>
+            <input id="user-name-input" type="text" placeholder="Your Name" style="width:90%; padding:10px; margin-bottom:10px; border-radius:10px; border:none; background:var(--bg); color:white;">
+            <input id="squad-code-input" type="text" placeholder="Squad Code (e.g. ALPHA)" style="width:90%; padding:10px; margin-bottom:10px; border-radius:10px; border:none; background:var(--bg); color:white;">
+            <button onclick="startApp()" style="width:90%;">ASCEND</button>
         </div>
 
-        <div id="squad-screen" class="hidden">
-            <h2 style="text-align:center;">Squad Setup</h2>
-            <div class="box">
-                <input type="text" id="squad-input" placeholder="Enter 6-Digit Code">
-                <button onclick="joinSquad()">Join Squad</button>
-                <p style="text-align:center; opacity:0.5;">— OR —</p>
-                <button style="background:var(--accent); color:white;" onclick="createSquad()">Create New Squad</button>
-            </div>
-        </div>
-
-        <div id="app-screen" class="hidden">
+        <div id="main-app" class="hidden">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <div id="display-name" style="font-weight:bold;">Warrior</div>
-                <button onclick="document.getElementById('achieveModal').style.display='flex'" style="width:auto;">🏆 Trophies</button>
+                <div id="display-name" style="font-weight:bold;">WARRIOR</div>
+                <button onclick="document.getElementById('achieveModal').style.display='flex'">🏆 Trophies</button>
             </div>
 
             <div class="stats-card" style="text-align: center;">
@@ -77,16 +65,15 @@
                 <h3>Sidequest Wheel</h3>
                 <div class="wheel-outer"><div class="pointer"></div><div id="wheel"></div></div>
                 <div id="quest-display"><p style="opacity:0.5;">Ready to spin?</p></div>
-                <div style="display:flex; gap:10px;">
+                <div style="display:flex; justify-content:center; gap:10px;">
                     <button id="spin-btn" onclick="spinWheel()">SPIN</button>
                     <button onclick="document.getElementById('questModal').style.display='flex'" style="background:#475569; color:white;">Edit</button>
                 </div>
             </div>
 
             <div class="box">
-                <h3 style="text-align:center;">Squad Leaderboard</h3>
+                <h3 style="text-align:center;">Squad: <span id="squad-title" style="color:var(--primary)">---</span></h3>
                 <div id="leaderboard-list"></div>
-                <div style="text-align:center; margin-top:10px;"><small>Code: <b id="squad-code-display" style="color:var(--primary)"></b></small></div>
             </div>
 
             <div class="box">
@@ -94,12 +81,17 @@
                 <div id="friends-list"></div>
             </div>
 
-            <button style="background:var(--danger); color:white; margin-top: 20px;" onclick="auth.signOut()">LOGOUT</button>
+            <div class="box">
+                <h3 style="text-align:center;">My Log History</h3>
+                <div id="history-list"></div>
+            </div>
+
+            <button style="background:#ef4444; color:white; width:100%; margin-top: 20px;" onclick="resetEverything()">RESET EVERYTHING</button>
         </div>
     </div>
 
     <div id="achieveModal" class="modal" onclick="this.style.display='none'"><div class="modal-content" onclick="event.stopPropagation()"><h2>Trophy Room</h2><div class="scroll-area" id="achievements-full-list"></div><button onclick="document.getElementById('achieveModal').style.display='none'">Close</button></div></div>
-    <div id="questModal" class="modal" onclick="this.style.display='none'"><div class="modal-content" onclick="event.stopPropagation()"><h3>Edit Quests</h3><div style="display:flex; gap:5px; margin-bottom:10px;"><input id="new-quest-input" placeholder="Solo | Squad" style="flex:1;"><button onclick="addCustomQuest()" style="width:auto;">Add</button></div><div class="scroll-area" id="quest-edit-list"></div><button onclick="document.getElementById('questModal').style.display='none'">Save</button></div></div>
+    <div id="questModal" class="modal" onclick="this.style.display='none'"><div class="modal-content" onclick="event.stopPropagation()"><h3>Edit Quests</h3><div style="display:flex; gap:5px; margin-bottom:10px;"><input id="new-quest-input" type="text" placeholder="Solo | Squad" style="flex:1; padding:10px; border-radius:10px; background:#0f172a; color:white; border:none;"><button onclick="addCustomQuest()">Add</button></div><div class="scroll-area" id="quest-edit-list"></div><button onclick="document.getElementById('questModal').style.display='none'">Save</button></div></div>
 
     <script>
         const firebaseConfig = {
@@ -108,12 +100,12 @@
             projectId: "godliness-bd3f8",
             storageBucket: "godliness-bd3f8.firebasestorage.app",
             messagingSenderId: "520495643556",
-            appId: "1:520495643556:web:e107bee032556f9ed89f31"
+            appId: "1:520495643556:web:e107bee032556f9ed89f31",
+            databaseURL: "https://godliness-bd3f8-default-rtdb.firebaseio.com"
         };
         
         firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+        const db = firebase.database();
 
         const taskDefs = [
             {l:'G', t:'Gratitude', s:'Name 3 blessings'}, {l:'O', t:'Outreach', s:'Kindness/service'},
@@ -123,135 +115,99 @@
             {l:'S', t:'Self-Reflect', s:'Nightly recap'}
         ];
 
-        let userState = null;
-        let sidequests = ["Solo: Mystery Meal | Squad: Cook-off", "Solo: Trade paperclip | Squad: Trade up", "Solo: Weird $5 shirt | Squad: Style", "Solo: Hold pose 60s | Squad: Group FREEZE", "Solo: Walk 1 mile | Squad: VIP Escort"];
+        let state = JSON.parse(localStorage.getItem('godlyVSync')) || { 
+            name: "", squadCode: "", xp: 0, lvl: 1, history: [], streaks: {}, lastActive: "", completedToday: [],
+            sidequests: [
+                "Solo: Mystery Meal | Squad: Cart Ride & Random Cook-off",
+                "Solo: Trade paperclip | Squad: Trade up items 20m",
+                "Solo: Weird $5 shirt | Squad: Style each other",
+                "Solo: Hold pose 60s | Squad: Group FREEZE 2m",
+                "Solo: Guard walk | Squad: V.I.P. Secret Service escort"
+            ]
+        };
 
-        function getLegacyData() {
-            const legacy = localStorage.getItem('godlyVSync');
-            return legacy ? JSON.parse(legacy) : null;
-        }
+        const today = new Date().toLocaleDateString();
+        if (state.lastActive !== today) { state.completedToday = []; state.lastActive = today; }
 
-        async function handleAuth(type) {
-            const e = document.getElementById('email').value;
-            const p = document.getElementById('pass').value;
-            const legacyData = getLegacyData();
-            try {
-                if(type === 'signup') {
-                    const res = await auth.createUserWithEmailAndPassword(e, p);
-                    const name = legacyData ? legacyData.name : prompt("Name?");
-                    await db.collection('users').doc(res.user.uid).set({
-                        name: name || "Warrior",
-                        xp: legacyData ? legacyData.xp : 0,
-                        lvl: legacyData ? legacyData.lvl : 1,
-                        history: legacyData ? legacyData.history : [],
-                        streaks: legacyData ? legacyData.streaks : {},
-                        squadId: null,
-                        lastActive: new Date().toLocaleDateString()
-                    });
-                } else { await auth.signInWithEmailAndPassword(e, p); }
-            } catch(err) { alert(err.message); }
-        }
-
-        auth.onAuthStateChanged(user => {
-            if(user) { loadUserData(user.uid); }
-            else { 
-                document.getElementById('auth-screen').classList.remove('hidden');
-                document.getElementById('app-screen').classList.add('hidden');
-                document.getElementById('squad-screen').classList.add('hidden');
+        function save() {
+            localStorage.setItem('godlyVSync', JSON.stringify(state));
+            if (state.name && state.squadCode) {
+                db.ref(`squads/${state.squadCode}/${state.name}`).set({
+                    name: state.name, xp: state.xp, lvl: state.lvl, history: state.history, streaks: state.streaks
+                });
             }
-        });
-
-        async function loadUserData(uid) {
-            const doc = await db.collection('users').doc(uid).get();
-            userState = doc.data();
-            document.getElementById('auth-screen').classList.add('hidden');
-            if(userState.squadId) { showApp(); } else { document.getElementById('squad-screen').classList.remove('hidden'); }
         }
 
-        async function createSquad() {
-            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-            await db.collection('squads').doc(code).set({ created: Date.now() });
-            await db.collection('users').doc(auth.currentUser.uid).update({ squadId: code });
+        function startApp() {
+            const n = document.getElementById('user-name-input').value.trim();
+            const s = document.getElementById('squad-code-input').value.trim().toUpperCase();
+            if(!n || !s) return alert("Enter name and squad code!");
+            state.name = n;
+            state.squadCode = s;
+            save();
             location.reload();
         }
 
-        async function joinSquad() {
-            const code = document.getElementById('squad-input').value.toUpperCase();
-            const s = await db.collection('squads').doc(code).get();
-            if(s.exists()) {
-                await db.collection('users').doc(auth.currentUser.uid).update({ squadId: code });
-                location.reload();
-            } else { alert("Squad not found"); }
-        }
+        function sync() {
+            if(!state.squadCode) {
+                document.getElementById('setup-screen').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('main-app').classList.remove('hidden');
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('squad-title').innerText = state.squadCode;
 
-        function showApp() {
-            document.getElementById('squad-screen').classList.add('hidden');
-            document.getElementById('app-screen').classList.remove('hidden');
-            document.getElementById('squad-code-display').innerText = userState.squadId;
-            
-            renderMyStats();
-            setupWheel();
-            renderQuestList();
-
-            db.collection('users').where('squadId', '==', userState.squadId).onSnapshot(snap => {
-                const lb = document.getElementById('leaderboard-list');
-                const fl = document.getElementById('friends-list');
-                lb.innerHTML = ''; fl.innerHTML = '';
-                let members = [];
-                snap.forEach(d => {
-                    const m = d.data();
-                    members.push(m);
-                    if(d.id === auth.currentUser.uid) { 
-                        userState = m; 
-                        renderMyStats(); 
-                    } else {
-                        fl.innerHTML += `<div class="date-header" onclick="this.nextElementSibling.classList.toggle('hidden')">👤 ${m.name} (LVL ${m.lvl})</div>
-                        <div class="hidden indent">${buildHistoryHtml(m.history)}</div>`;
-                    }
-                });
-                members.sort((a,b) => b.lvl - a.lvl || b.xp - a.xp).forEach((m, i) => {
-                    lb.innerHTML += `<div class="lb-row"><span>#${i+1} ${m.name}</span><b>LVL ${m.lvl}</b></div>`;
-                });
-                renderTrophies();
+            db.ref(`squads/${state.squadCode}`).on('value', (snap) => {
+                const squadData = snap.val() || {};
+                render(squadData);
             });
         }
 
-        function renderMyStats() {
-            if(!userState) return;
-            document.getElementById('display-name').innerText = userState.name;
-            document.getElementById('xp-display').innerText = userState.xp;
-            document.getElementById('user-rank').innerText = `Level ${userState.lvl}`;
-            document.getElementById('progress-bar').style.width = (userState.xp / 7) + '%';
+        function render(squadData) {
+            document.getElementById('display-name').innerText = state.name;
+            document.getElementById('xp-display').innerText = state.xp;
+            document.getElementById('user-rank').innerText = `Level ${state.lvl}`;
+            document.getElementById('progress-bar').style.width = (state.xp / 7) + '%';
             
-            const today = new Date().toLocaleDateString();
-            const doneToday = userState.history ? userState.history.filter(h => h.d === today).map(h => h.t) : [];
-            
-            const container = document.getElementById('task-container');
-            container.innerHTML = taskDefs.map(item => `
-                <div class="task-item ${doneToday.includes(item.t) ? 'done' : ''}" onclick="logTask('${item.t}')">
+            document.getElementById('task-container').innerHTML = taskDefs.map(item => `
+                <div class="task-item ${state.completedToday.includes(item.t) ? 'done' : ''}" onclick="toggleTask('${item.t}')">
                     <div class="letter">${item.l}</div>
-                    <div><b>${item.t}</b><br><small style="opacity:0.7;">${item.s}</small></div>
-                    <div class="streak-fire">🔥 ${ (userState.streaks && userState.streaks[item.t]) ? userState.streaks[item.t] : 0 }</div>
+                    <div style="display:flex; flex-direction:column;">
+                        <span style="font-weight:bold;">${item.t}</span>
+                        <small style="opacity:0.7; font-size:0.7rem;">${item.s}</small>
+                    </div>
+                    <div class="streak-fire">🔥 ${state.streaks[item.t] || 0}</div>
                 </div>`).join('');
+
+            document.getElementById('history-list').innerHTML = buildHistoryHtml(state.history);
+            
+            // Leaderboard & Friends
+            const members = Object.values(squadData).sort((a,b) => b.lvl - a.lvl || b.xp - a.xp);
+            document.getElementById('leaderboard-list').innerHTML = members.map((f, i) => `<div class="lb-row"><span>#${i+1} ${f.name}</span><span style="color:var(--primary); font-weight:bold;">LVL ${f.lvl}</span></div>`).join('');
+
+            document.getElementById('friends-list').innerHTML = members
+                .filter(f => f.name !== state.name)
+                .map(f => `
+                    <div class="date-header friend-header" onclick="this.nextElementSibling.classList.toggle('hidden')">👤 ${f.name} (LVL ${f.lvl})</div>
+                    <div class="hidden indent">${buildHistoryHtml(f.history || [])}</div>
+                `).join('');
+
+            renderTrophies();
         }
 
-        async function logTask(t) {
-            const today = new Date().toLocaleDateString();
-            if(userState.history && userState.history.some(h => h.t === t && h.d === today)) return;
-            const n = prompt(`Log entry for ${t}:`);
-            if(!n) return;
-            let { xp, lvl, history, streaks } = userState;
-            xp += 15;
-            if(xp >= 700) { xp = 0; lvl++; confetti(); }
-            if(!streaks) streaks = {};
-            streaks[t] = (streaks[t] || 0) + 1;
-            if(!history) history = [];
-            history.unshift({ t, n, d: today });
-            await db.collection('users').doc(auth.currentUser.uid).update({ xp, lvl, history, streaks });
+        function toggleTask(t) {
+            if (state.completedToday.includes(t)) return;
+            let log = prompt(`Log entry for ${t}:`); if(!log) return;
+            state.completedToday.push(t);
+            state.streaks[t] = (state.streaks[t] || 0) + 1;
+            state.xp += 15;
+            state.history.unshift({ t, n: log, d: today });
+            if (state.xp >= 700) { state.lvl++; state.xp = 0; }
+            save(); location.reload(); // Refresh to sync squad instantly
         }
 
         function buildHistoryHtml(arr) {
-            if(!arr || !arr.length) return "<p style='padding:10px; opacity:0.5;'>No logs.</p>";
+            if(!arr || !arr.length) return "<p style='padding:10px; opacity:0.5;'>No logs found.</p>";
             const groups = {}; arr.forEach(h => { if(!groups[h.d]) groups[h.d] = []; groups[h.d].push(h); });
             return Object.keys(groups).sort((a,b)=>new Date(b)-new Date(a)).map(d => `
                 <div class="date-header" onclick="this.nextElementSibling.classList.toggle('hidden')">📅 ${d}</div>
@@ -261,9 +217,9 @@
 
         function setupWheel() {
             const wheel = document.getElementById('wheel');
-            const arc = 360 / sidequests.length;
+            const arc = 360 / state.sidequests.length;
             wheel.innerHTML = '';
-            sidequests.forEach((q, i) => {
+            state.sidequests.forEach((q, i) => {
                 const seg = document.createElement('div');
                 seg.className = 'segment';
                 seg.style.background = i % 2 === 0 ? '#22c55e' : '#fbbf24';
@@ -272,29 +228,35 @@
             });
         }
 
-        let curRot = 0;
         function spinWheel() {
             const btn = document.getElementById('spin-btn');
             btn.disabled = true;
-            const winIdx = Math.floor(Math.random() * sidequests.length);
-            const arc = 360 / sidequests.length;
-            curRot += 1440 + ((sidequests.length - winIdx) * arc - (arc / 2));
+            const winIdx = Math.floor(Math.random() * state.sidequests.length);
+            const arc = 360 / state.sidequests.length;
+            curRot = (curRot || 0) + 1440 + ((state.sidequests.length - winIdx) * arc - (arc / 2));
             document.getElementById('wheel').style.transform = `rotate(${curRot}deg)`;
             setTimeout(() => {
-                const [so, sq] = sidequests[winIdx].split('|').map(s => s.trim());
+                const [so, sq] = state.sidequests[winIdx].split('|').map(s => s.trim());
                 document.getElementById('quest-display').innerHTML = `<div class="quest-box"><div class="quest-label">SOLO</div><div>${so}</div></div><div class="quest-box"><div class="quest-label">SQUAD</div><div>${sq || 'None'}</div></div>`;
                 btn.disabled = false;
-                confetti();
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.8 } });
             }, 3000);
         }
 
-        function addCustomQuest() { const i = document.getElementById('new-quest-input'); if(i.value){ sidequests.push(i.value); i.value=""; setupWheel(); renderQuestList(); } }
-        function renderQuestList() { document.getElementById('quest-edit-list').innerHTML = sidequests.map((q,i)=>`<div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #444;"><span>${q}</span><span onclick="sidequests.splice(${i},1); renderQuestList(); setupWheel();" style="color:red; cursor:pointer;">✖</span></div>`).join(''); }
         function renderTrophies() {
-            if(!userState) return;
-            const trophies = [{n: "Awakened", d: "First win", c: (userState.history && userState.history.length >= 1)}, {n: "Level 5", d: "Ascended", c: userState.lvl >= 5}];
+            const trophies = [
+                {n: "Awakened", d: "First win logged", c: state.history.length >= 1},
+                {n: "Disciplined", d: "7-day streak reached", c: Object.values(state.streaks).some(s => s >= 7)},
+                {n: "High Roller", d: "Reached Level 5", c: state.lvl >= 5}
+            ];
             document.getElementById('achievements-full-list').innerHTML = trophies.map(a => `<div class="achieve-item ${a.c?'unlocked':''}"><b>${a.c?'✅':'🔒'} ${a.n}</b><br><small>${a.d}</small></div>`).join('');
         }
+
+        let curRot = 0;
+        function resetEverything() { if(confirm("Erase all?")) { localStorage.clear(); location.reload(); } }
+        function addCustomQuest() { const i = document.getElementById('new-quest-input'); if(i.value){ state.sidequests.push(i.value); i.value=""; save(); setupWheel(); } }
+
+        setupWheel(); sync();
     </script>
 </body>
 </html>
