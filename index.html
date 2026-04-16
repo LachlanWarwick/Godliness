@@ -3,87 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>ARTHUR HUD</title>
+    <title>ARTHUR HUD v4</title>
     <style>
         :root { --gold: #ffd700; --bg: #000; }
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        
-        body { 
-            background: var(--bg); color: var(--gold); 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            display: flex; flex-direction: column; align-items: center; 
-            height: 100vh; margin: 0; overflow: hidden; 
-            justify-content: space-between;
-            padding: 80px 0 60px 0;
-        }
-
-        /* Animated Core */
-        #core {
-            width: 140px; height: 140px;
-            position: relative; display: flex; align-items: center; justify-content: center;
-        }
-        .ring {
-            position: absolute; width: 100%; height: 100%;
-            border: 2px solid var(--gold); border-radius: 50%;
-            border-bottom-color: transparent; animation: spin 3s linear infinite;
-        }
-        #inner-a { font-size: 3.5rem; font-weight: 200; text-shadow: 0 0 15px var(--gold); }
-
-        /* HUD Readout */
-        #display {
-            width: 85%; text-align: center; background: rgba(255, 215, 0, 0.05);
-            border-top: 1px solid var(--gold); border-bottom: 1px solid var(--gold); 
-            padding: 20px; min-height: 140px; display: flex; flex-direction: column; justify-content: center;
-        }
-        #status { font-size: 0.7rem; letter-spacing: 4px; margin-bottom: 10px; opacity: 0.7; font-weight: bold; }
-        #text { font-size: 1.1rem; line-height: 1.4; text-shadow: 0 0 5px var(--gold); }
-
-        /* Centered Trigger */
-        #ptt-container { width: 100%; display: flex; justify-content: center; }
-        #ptt-btn {
-            width: 110px; height: 110px; border-radius: 50%;
-            background: transparent; border: 3px solid var(--gold);
-            color: var(--gold); font-size: 0.9rem; font-weight: bold;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-            transition: transform 0.1s;
-        }
-        #ptt-btn:active { background: var(--gold); color: #000; transform: scale(0.9); }
-
+        body { background: var(--bg); color: var(--gold); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; height: 100vh; margin: 0; justify-content: space-around; overflow: hidden; }
+        #core { width: 130px; height: 130px; border: 2px solid var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 10px var(--gold); position: relative; }
+        .ring { position: absolute; width: 100%; height: 100%; border: 2px solid var(--gold); border-radius: 50%; border-bottom-color: transparent; }
+        #display { width: 85%; text-align: center; border-top: 1px solid var(--gold); padding: 20px; min-height: 130px; }
+        #status { font-size: 0.7rem; letter-spacing: 3px; margin-bottom: 8px; opacity: 0.8; }
+        #ptt-btn { width: 110px; height: 110px; border-radius: 50%; border: 3px solid var(--gold); background: transparent; color: var(--gold); font-weight: bold; font-size: 1rem; }
+        #ptt-btn:active { background: var(--gold); color: black; transform: scale(0.95); }
+        .spin { animation: spin 2s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .pulse { animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
     <div id="core">
-        <div class="ring"></div>
-        <div id="inner-a">A</div>
+        <div id="ring" class="ring"></div>
+        A
     </div>
 
     <div id="display">
-        <div id="status">ARTHUR HF-V2 ONLINE</div>
-        <div id="text">"System ready, Sir. Tap once to initialize, then hold to speak."</div>
+        <div id="status">ARTHUR CORE v4.0</div>
+        <div id="text">"Initializing audio link... Tap once to begin, Sir."</div>
     </div>
 
-    <div id="ptt-container">
-        <div id="ptt-btn">HOLD</div>
-    </div>
+    <button id="ptt-btn">HOLD</button>
 
     <script type="module">
-        // --- 1. CONFIGURATION ---
+        // --- 1. THE REFINED TOKEN ---
         const HF_TOKEN = "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"; 
         const MODEL_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta";
 
         const status = document.getElementById('status');
         const output = document.getElementById('text');
         const btn = document.getElementById('ptt-btn');
+        const ring = document.getElementById('ring');
 
-        // --- 2. THE BRAIN ---
-        async function queryAI(userInput) {
+        // --- 2. THE IMPROVED NEURAL LINK ---
+        async function queryAI(input) {
             const response = await fetch(MODEL_URL, {
                 headers: { 
                     "Authorization": `Bearer ${HF_TOKEN}`,
@@ -91,37 +50,33 @@
                 },
                 method: "POST",
                 body: JSON.stringify({
-                    inputs: `<s>[INST] You are ARTHUR, a polite British AI for cyberpunk medieval armor. You are formal and call the user 'Sir'. Keep it under 15 words. User: ${userInput} [/INST]`,
-                    parameters: { max_new_tokens: 50, return_full_text: false }
+                    inputs: `<|system|>\nYou are ARTHUR, a British AI. Be formal. Call user 'Sir'. Under 10 words.</s>\n<|user|>\n${input}</s>\n<|assistant|>\n`,
+                    options: { wait_for_model: true } 
                 }),
             });
+
+            if (response.status === 401) throw new Error("401: Invalid Token. Check for spaces.");
+            if (response.status === 503) throw new Error("503: Warm-up in progress. Try again in 20s.");
+
             const result = await response.json();
-            
-            // HF can return an array or an error object
-            if (result.error) throw new Error(result.error);
-            
-            let reply = result.generated_text || result.generated_text;
-            return reply.split('[/INST]').pop().trim();
+            let reply = Array.isArray(result) ? result.generated_text : result.generated_text;
+            return reply.split('<|assistant|>').pop().trim();
         }
 
-        // --- 3. THE EARS ---
         const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = 'en-US';
-        recognition.continuous = false;
 
         btn.addEventListener('touchstart', (e) => {
             e.preventDefault();
             try { 
                 recognition.start(); 
                 status.innerText = "LISTENING...";
-                status.classList.add('pulse');
-            } catch(err) {}
+                ring.classList.add('spin');
+            } catch(e) {}
         });
 
         btn.addEventListener('touchend', () => {
             recognition.stop();
-            status.classList.remove('pulse');
-            status.innerText = "THINKING...";
+            status.innerText = "LINKING...";
         });
 
         recognition.onresult = async (event) => {
@@ -134,28 +89,24 @@
                 speak(aiReply);
                 status.innerText = "ARTHUR STANDBY";
             } catch (err) {
-                console.error(err);
                 status.innerText = "LINK ERROR";
-                output.innerText = "Sir, the neural link is failing. Ensure the token is valid.";
+                output.innerText = "Sir: " + err.message;
             }
+            ring.classList.remove('spin');
         };
 
-        // --- 4. THE VOICE ---
         function speak(text) {
-            const synth = window.speechSynthesis;
             const utter = new SpeechSynthesisUtterance(text);
-            const voices = synth.getVoices();
-            // Try to find British English, otherwise default
+            const voices = window.speechSynthesis.getVoices();
             utter.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
-            utter.pitch = 0.95;
-            utter.rate = 1.0;
-            synth.speak(utter);
+            utter.pitch = 0.9;
+            window.speechSynthesis.speak(utter);
         }
 
-        // Initialize Audio on first tap (Safari Requirement)
+        // iPhone Audio Unlocking
         document.body.addEventListener('click', () => {
             window.speechSynthesis.getVoices();
-            output.innerText = "Audio initialized, Sir.";
+            output.innerText = "Audio online, Sir. Hold the button to speak.";
         }, {once: true});
     </script>
 </body>
