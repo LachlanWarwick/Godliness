@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR HUD v4</title>
+    <title>ARTHUR HUD v5</title>
     <style>
         :root { --gold: #ffd700; --bg: #000; }
-        body { background: var(--bg); color: var(--gold); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; height: 100vh; margin: 0; justify-content: space-around; overflow: hidden; }
-        #core { width: 130px; height: 130px; border: 2px solid var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 10px var(--gold); position: relative; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--gold); font-family: -apple-system, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; height: 100vh; margin: 0; justify-content: space-between; padding: 60px 0; overflow: hidden; }
+        #core { width: 140px; height: 140px; border: 2px solid var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 15px var(--gold); position: relative; }
         .ring { position: absolute; width: 100%; height: 100%; border: 2px solid var(--gold); border-radius: 50%; border-bottom-color: transparent; }
-        #display { width: 85%; text-align: center; border-top: 1px solid var(--gold); padding: 20px; min-height: 130px; }
-        #status { font-size: 0.7rem; letter-spacing: 3px; margin-bottom: 8px; opacity: 0.8; }
-        #ptt-btn { width: 110px; height: 110px; border-radius: 50%; border: 3px solid var(--gold); background: transparent; color: var(--gold); font-weight: bold; font-size: 1rem; }
-        #ptt-btn:active { background: var(--gold); color: black; transform: scale(0.95); }
-        .spin { animation: spin 2s linear infinite; }
+        #display { width: 85%; text-align: center; border-top: 1px solid var(--gold); border-bottom: 1px solid var(--gold); padding: 20px; min-height: 150px; display: flex; flex-direction: column; justify-content: center; background: rgba(255, 215, 0, 0.03); }
+        #status { font-size: 0.7rem; letter-spacing: 4px; margin-bottom: 8px; font-weight: bold; }
+        #ptt-btn { width: 110px; height: 110px; border-radius: 50%; border: 3px solid var(--gold); background: transparent; color: var(--gold); font-weight: bold; font-size: 1.1rem; box-shadow: 0 0 20px rgba(255, 215, 0, 0.2); }
+        #ptt-btn:active { background: var(--gold); color: black; transform: scale(0.92); }
+        .spin { animation: spin 1.5s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -25,8 +26,8 @@
     </div>
 
     <div id="display">
-        <div id="status">ARTHUR CORE v4.0</div>
-        <div id="text">"Initializing audio link... Tap once to begin, Sir."</div>
+        <div id="status">ARTHUR CORE v5.0</div>
+        <div id="text">"Sir, please tap once to initialize the audio servos."</div>
     </div>
 
     <button id="ptt-btn">HOLD</button>
@@ -41,26 +42,43 @@
         const btn = document.getElementById('ptt-btn');
         const ring = document.getElementById('ring');
 
-        // --- 2. THE IMPROVED NEURAL LINK ---
+        // --- 2. THE STABILIZED NEURAL LINK ---
         async function queryAI(input) {
-            const response = await fetch(MODEL_URL, {
-                headers: { 
-                    "Authorization": `Bearer ${HF_TOKEN}`,
-                    "Content-Type": "application/json"
-                },
-                method: "POST",
-                body: JSON.stringify({
-                    inputs: `<|system|>\nYou are ARTHUR, a British AI. Be formal. Call user 'Sir'. Under 10 words.</s>\n<|user|>\n${input}</s>\n<|assistant|>\n`,
-                    options: { wait_for_model: true } 
-                }),
-            });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s limit
 
-            if (response.status === 401) throw new Error("401: Invalid Token. Check for spaces.");
-            if (response.status === 503) throw new Error("503: Warm-up in progress. Try again in 20s.");
+            try {
+                const response = await fetch(MODEL_URL, {
+                    headers: { 
+                        "Authorization": `Bearer ${HF_TOKEN}`,
+                        "Content-Type": "application/json"
+                    },
+                    method: "POST",
+                    signal: controller.signal,
+                    body: JSON.stringify({
+                        inputs: `<|system|>\nYou are ARTHUR, a British AI squire. Be formal. Call user 'Sir'. Max 12 words.</s>\n<|user|>\n${input}</s>\n<|assistant|>\n`,
+                        parameters: { return_full_text: false, max_new_tokens: 50 },
+                        options: { wait_for_model: true } 
+                    }),
+                });
 
-            const result = await response.json();
-            let reply = Array.isArray(result) ? result.generated_text : result.generated_text;
-            return reply.split('<|assistant|>').pop().trim();
+                clearTimeout(timeoutId);
+
+                if (response.status === 503) {
+                    return "Warming up the power cells, Sir. Try again in ten seconds.";
+                }
+                if (response.status === 401) {
+                    return "Sir, the Imperial Token has been rejected. Check for hidden spaces.";
+                }
+
+                const result = await response.json();
+                let reply = Array.isArray(result) ? result.generated_text : result.generated_text;
+                return reply.split('<|assistant|>').pop().trim();
+
+            } catch (err) {
+                if (err.name === 'AbortError') return "The neural link timed out. The model is likely cold-starting.";
+                throw err;
+            }
         }
 
         const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -90,7 +108,7 @@
                 status.innerText = "ARTHUR STANDBY";
             } catch (err) {
                 status.innerText = "LINK ERROR";
-                output.innerText = "Sir: " + err.message;
+                output.innerText = "Sir, connection to the cloud was severed.";
             }
             ring.classList.remove('spin');
         };
@@ -99,14 +117,15 @@
             const utter = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
             utter.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
-            utter.pitch = 0.9;
+            utter.pitch = 0.95;
+            utter.rate = 1.0;
             window.speechSynthesis.speak(utter);
         }
 
-        // iPhone Audio Unlocking
+        // Essential Audio Unlock
         document.body.addEventListener('click', () => {
             window.speechSynthesis.getVoices();
-            output.innerText = "Audio online, Sir. Hold the button to speak.";
+            output.innerText = "Audio online, Sir. Hold the button to command.";
         }, {once: true});
     </script>
 </body>
