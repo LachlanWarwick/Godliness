@@ -3,115 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR HUD v5</title>
+    <title>ARTHUR LOCAL HUD</title>
     <style>
         :root { --gold: #ffd700; --bg: #000; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); color: var(--gold); font-family: -apple-system, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; height: 100vh; margin: 0; justify-content: space-between; padding: 60px 0; overflow: hidden; }
+        body { background: var(--bg); color: var(--gold); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; height: 100vh; margin: 0; justify-content: space-between; padding: 60px 0; overflow: hidden; }
         #core { width: 140px; height: 140px; border: 2px solid var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 15px var(--gold); position: relative; }
-        .ring { position: absolute; width: 100%; height: 100%; border: 2px solid var(--gold); border-radius: 50%; border-bottom-color: transparent; }
-        #display { width: 85%; text-align: center; border-top: 1px solid var(--gold); border-bottom: 1px solid var(--gold); padding: 20px; min-height: 150px; display: flex; flex-direction: column; justify-content: center; background: rgba(255, 215, 0, 0.03); }
-        #status { font-size: 0.7rem; letter-spacing: 4px; margin-bottom: 8px; font-weight: bold; }
-        #ptt-btn { width: 110px; height: 110px; border-radius: 50%; border: 3px solid var(--gold); background: transparent; color: var(--gold); font-weight: bold; font-size: 1.1rem; box-shadow: 0 0 20px rgba(255, 215, 0, 0.2); }
-        #ptt-btn:active { background: var(--gold); color: black; transform: scale(0.92); }
-        .spin { animation: spin 1.5s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        #display { width: 85%; text-align: center; border-top: 1px solid var(--gold); padding: 20px; min-height: 150px; display: flex; flex-direction: column; justify-content: center; background: rgba(255, 215, 0, 0.05); }
+        #ptt-btn { width: 110px; height: 110px; border-radius: 50%; border: 3px solid var(--gold); background: transparent; color: var(--gold); font-weight: bold; font-size: 1.1rem; }
+        #ptt-btn:active { background: var(--gold); color: black; transform: scale(0.9); }
     </style>
 </head>
 <body>
 
-    <div id="core">
-        <div id="ring" class="ring"></div>
-        A
-    </div>
+    <div id="core">A</div>
 
     <div id="display">
-        <div id="status">ARTHUR CORE v5.0</div>
-        <div id="text">"Sir, please tap once to initialize the audio servos."</div>
+        <div id="status">LOCAL CORE ACTIVE</div>
+        <div id="text">"Sir, please tap once to engage the local neural link."</div>
     </div>
 
     <button id="ptt-btn">HOLD</button>
 
-<script type="module">
-    const HF_TOKEN = "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"; 
-    // Using the 'HuggingFaceH4' model which has higher uptime for free tier
-    const MODEL_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta";
+    <script>
+        const status = document.getElementById('status');
+        const output = document.getElementById('text');
+        const btn = document.getElementById('ptt-btn');
 
-    const status = document.getElementById('status');
-    const output = document.getElementById('text');
-    const btn = document.getElementById('ptt-btn');
-    const ring = document.getElementById('ring');
+        // --- ARTHUR'S LOCAL LOGIC ---
+        const brain = {
+            "status": "Armor integrity is optimal. All systems are green, Sir.",
+            "hello": "Greetings, Sir. I am ARTHUR. At your service.",
+            "power": "Power cells are at maximum capacity. We are ready for engagement.",
+            "who": "I am ARTHUR, your digital squire and tactical assistant.",
+            "weapon": "Weapon systems are locked in safe mode, Sir. Shall I prime them?",
+            "helmet": "The HUD is recalibrated and clear. Your vision is unimpeded.",
+            "identify": "You are the Knight of the Cyber-Realm, Sir.",
+            "thank": "The pleasure is entirely mine, Sir."
+        };
 
-    async function queryAI(input, retryCount = 0) {
-        try {
-            const response = await fetch(MODEL_URL, {
-                headers: { 
-                    "Authorization": `Bearer ${HF_TOKEN}`,
-                    "Content-Type": "application/json"
-                },
-                method: "POST",
-                body: JSON.stringify({
-                    inputs: `<|system|>\nYou are ARTHUR, a British AI. Be formal. Call user 'Sir'. Max 10 words.</s>\n<|user|>\n${input}</s>\n<|assistant|>\n`,
-                    options: { wait_for_model: true, use_cache: false } 
-                }),
-            });
+        const recognition = new (window.webkitSpeechRecognition || window.recognition)();
+        recognition.lang = 'en-US';
 
-            if (response.status === 503 && retryCount < 2) {
-                status.innerText = "WARMING UP...";
-                await new Promise(res => setTimeout(res, 5000)); // Wait 5 seconds
-                return queryAI(input, retryCount + 1); // Auto-retry
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            recognition.start();
+            status.innerText = "LISTENING...";
+        });
+
+        btn.addEventListener('touchend', () => {
+            recognition.stop();
+            status.innerText = "THINKING...";
+        });
+
+        recognition.onresult = (event) => {
+            const transcript = event.results.transcript.toLowerCase();
+            output.innerText = `"${transcript}"`;
+            
+            let response = "I'm afraid I don't have a protocol for that, Sir. But I am standing by.";
+            
+            // Search for keywords in your speech
+            for (let key in brain) {
+                if (transcript.includes(key)) {
+                    response = brain[key];
+                    break;
+                }
             }
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Server Error");
-            }
+            setTimeout(() => {
+                output.innerText = response;
+                speak(response);
+                status.innerText = "ARTHUR STANDBY";
+            }, 400);
+        };
 
-            const result = await response.json();
-            let reply = Array.isArray(result) ? result.generated_text : result.generated_text;
-            return reply.split('<|assistant|>').pop().trim();
-
-        } catch (err) {
-            console.error("Link Error:", err);
-            throw err;
+        function speak(text) {
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB')) || window.speechSynthesis.getVoices();
+            utter.pitch = 0.95;
+            window.speechSynthesis.speak(utter);
         }
-    }
 
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-
-    btn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        recognition.start();
-        status.innerText = "LISTENING...";
-        ring.classList.add('spin');
-    });
-
-    btn.addEventListener('touchend', () => {
-        recognition.stop();
-        status.innerText = "LINKING...";
-    });
-
-    recognition.onresult = async (event) => {
-        const transcript = event.results.transcript;
-        output.innerText = `"${transcript}"`;
-
-        try {
-            const aiReply = await queryAI(transcript);
-            output.innerText = aiReply;
-            speak(aiReply);
-            status.innerText = "ARTHUR STANDBY";
-        } catch (err) {
-            status.innerText = "LINK FAILED";
-            output.innerText = "Sir, the neural link timed out. Please check your data connection.";
-        }
-        ring.classList.remove('spin');
-    };
-
-    function speak(text) {
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB')) || window.speechSynthesis.getVoices();
-        window.speechSynthesis.speak(utter);
-    }
-
-    document.body.addEventListener('click', () => { window.speechSynthesis.getVoices(); }, {once: true});
-</script>
+        document.body.addEventListener('click', () => {
+            window.speechSynthesis.getVoices();
+            output.innerText = "Local link established, Sir. Hold to speak.";
+        }, {once: true});
+    </script>
+</body>
+</html>
