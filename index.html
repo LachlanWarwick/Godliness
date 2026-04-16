@@ -32,101 +32,86 @@
 
     <button id="ptt-btn">HOLD</button>
 
-    <script type="module">
-        // --- 1. THE REFINED TOKEN ---
-        const HF_TOKEN = "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"; 
-        const MODEL_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta";
+<script type="module">
+    const HF_TOKEN = "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"; 
+    // Using the 'HuggingFaceH4' model which has higher uptime for free tier
+    const MODEL_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta";
 
-        const status = document.getElementById('status');
-        const output = document.getElementById('text');
-        const btn = document.getElementById('ptt-btn');
-        const ring = document.getElementById('ring');
+    const status = document.getElementById('status');
+    const output = document.getElementById('text');
+    const btn = document.getElementById('ptt-btn');
+    const ring = document.getElementById('ring');
 
-        // --- 2. THE STABILIZED NEURAL LINK ---
-        async function queryAI(input) {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s limit
+    async function queryAI(input, retryCount = 0) {
+        try {
+            const response = await fetch(MODEL_URL, {
+                headers: { 
+                    "Authorization": `Bearer ${HF_TOKEN}`,
+                    "Content-Type": "application/json"
+                },
+                method: "POST",
+                body: JSON.stringify({
+                    inputs: `<|system|>\nYou are ARTHUR, a British AI. Be formal. Call user 'Sir'. Max 10 words.</s>\n<|user|>\n${input}</s>\n<|assistant|>\n`,
+                    options: { wait_for_model: true, use_cache: false } 
+                }),
+            });
 
-            try {
-                const response = await fetch(MODEL_URL, {
-                    headers: { 
-                        "Authorization": `Bearer ${HF_TOKEN}`,
-                        "Content-Type": "application/json"
-                    },
-                    method: "POST",
-                    signal: controller.signal,
-                    body: JSON.stringify({
-                        inputs: `<|system|>\nYou are ARTHUR, a British AI squire. Be formal. Call user 'Sir'. Max 12 words.</s>\n<|user|>\n${input}</s>\n<|assistant|>\n`,
-                        parameters: { return_full_text: false, max_new_tokens: 50 },
-                        options: { wait_for_model: true } 
-                    }),
-                });
-
-                clearTimeout(timeoutId);
-
-                if (response.status === 503) {
-                    return "Warming up the power cells, Sir. Try again in ten seconds.";
-                }
-                if (response.status === 401) {
-                    return "Sir, the Imperial Token has been rejected. Check for hidden spaces.";
-                }
-
-                const result = await response.json();
-                let reply = Array.isArray(result) ? result.generated_text : result.generated_text;
-                return reply.split('<|assistant|>').pop().trim();
-
-            } catch (err) {
-                if (err.name === 'AbortError') return "The neural link timed out. The model is likely cold-starting.";
-                throw err;
+            if (response.status === 503 && retryCount < 2) {
+                status.innerText = "WARMING UP...";
+                await new Promise(res => setTimeout(res, 5000)); // Wait 5 seconds
+                return queryAI(input, retryCount + 1); // Auto-retry
             }
-        }
 
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-
-        btn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            try { 
-                recognition.start(); 
-                status.innerText = "LISTENING...";
-                ring.classList.add('spin');
-            } catch(e) {}
-        });
-
-        btn.addEventListener('touchend', () => {
-            recognition.stop();
-            status.innerText = "LINKING...";
-        });
-
-        recognition.onresult = async (event) => {
-            const transcript = event.results.transcript;
-            output.innerText = `"${transcript}"`;
-
-            try {
-                const aiReply = await queryAI(transcript);
-                output.innerText = aiReply;
-                speak(aiReply);
-                status.innerText = "ARTHUR STANDBY";
-            } catch (err) {
-                status.innerText = "LINK ERROR";
-                output.innerText = "Sir, connection to the cloud was severed.";
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Server Error");
             }
-            ring.classList.remove('spin');
-        };
 
-        function speak(text) {
-            const utter = new SpeechSynthesisUtterance(text);
-            const voices = window.speechSynthesis.getVoices();
-            utter.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
-            utter.pitch = 0.95;
-            utter.rate = 1.0;
-            window.speechSynthesis.speak(utter);
+            const result = await response.json();
+            let reply = Array.isArray(result) ? result.generated_text : result.generated_text;
+            return reply.split('<|assistant|>').pop().trim();
+
+        } catch (err) {
+            console.error("Link Error:", err);
+            throw err;
         }
+    }
 
-        // Essential Audio Unlock
-        document.body.addEventListener('click', () => {
-            window.speechSynthesis.getVoices();
-            output.innerText = "Audio online, Sir. Hold the button to command.";
-        }, {once: true});
-    </script>
-</body>
-</html>
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+    btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        recognition.start();
+        status.innerText = "LISTENING...";
+        ring.classList.add('spin');
+    });
+
+    btn.addEventListener('touchend', () => {
+        recognition.stop();
+        status.innerText = "LINKING...";
+    });
+
+    recognition.onresult = async (event) => {
+        const transcript = event.results.transcript;
+        output.innerText = `"${transcript}"`;
+
+        try {
+            const aiReply = await queryAI(transcript);
+            output.innerText = aiReply;
+            speak(aiReply);
+            status.innerText = "ARTHUR STANDBY";
+        } catch (err) {
+            status.innerText = "LINK FAILED";
+            output.innerText = "Sir, the neural link timed out. Please check your data connection.";
+        }
+        ring.classList.remove('spin');
+    };
+
+    function speak(text) {
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB')) || window.speechSynthesis.getVoices();
+        window.speechSynthesis.speak(utter);
+    }
+
+    document.body.addEventListener('click', () => { window.speechSynthesis.getVoices(); }, {once: true});
+</script>
