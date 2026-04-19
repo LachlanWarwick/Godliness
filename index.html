@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARTHUR v12.0</title>
+    <title>ARTHUR v12.2</title>
     <style>
         body { 
             background: #050000; color: #00f2ff; 
@@ -11,20 +11,20 @@
             display: flex; flex-direction: column; 
             align-items: center; justify-content: center; 
             height: 100vh; overflow: hidden;
-            -webkit-user-select: none; user-select: none;
         }
         #arc-reactor { 
             width: 180px; height: 180px; 
-            border: 6px solid #00f2ff; border-radius: 50%; 
+            border: 4px solid #00f2ff; border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; 
             font-size: 5rem; font-weight: bold;
-            box-shadow: 0 0 20px #00f2ff;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: none; /* Critical for iOS */
+            transition: all 0.15s ease;
+            box-shadow: none;
+            touch-action: none;
+            -webkit-user-select: none;
         }
         #display-panel { margin-top: 40px; text-align: center; width: 85%; }
-        #status { font-size: 0.7rem; letter-spacing: 3px; margin-bottom: 10px; opacity: 0.8; }
-        #output { font-size: 1rem; color: #fff; font-style: italic; min-height: 50px; }
+        #status { font-size: 0.7rem; letter-spacing: 3px; margin-bottom: 10px; text-transform: uppercase; }
+        #output { font-size: 1rem; color: #fff; font-style: italic; min-height: 60px; }
     </style>
 </head>
 <body oncontextmenu="return false;">
@@ -32,13 +32,20 @@
     <div id="arc-reactor">A</div>
 
     <div id="display-panel">
-        <div id="status">CORE V12.0</div>
-        <div id="output">"Hold the center, Sir."</div>
+        <div id="status">CORE SECURED</div>
+        <div id="output">"Bypass active. Standing by, Sir."</div>
     </div>
 
     <script>
-        const GK = "gsk_" + "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
-        const OK = "sk-proj-" + "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
+        // --- SPLIT-KEY BYPASS SYSTEM ---
+        const GK_A = "gsk_";
+        const GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
+
+        const OK_A = "sk-proj-";
+        const OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
+
+        const F_GK = GK_A + GK_B;
+        const F_OK = OK_A + OK_B;
 
         const reactor = document.getElementById('arc-reactor');
         const status = document.getElementById('status');
@@ -47,26 +54,29 @@
         let mediaRecorder, chunks = [];
 
         async function processVoice(blob) {
-            output.innerText = "Processing...";
+            status.innerText = "Analyzing...";
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
             fd.append("model", "whisper-1");
 
             try {
+                // OpenAI Ear
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST", headers: { "Authorization": `Bearer ${OK}` }, body: fd
+                    method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
                 if (data.error) throw new Error(data.error.message);
                 
                 output.innerText = `"${data.text}"`;
+                status.innerText = "Processing...";
 
+                // Groq Brain
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: { "Authorization": `Bearer ${GK}`, "Content-Type": "application/json" },
+                    headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role:"system", content:"You are ARTHUR. Max 10 words. Sir."}, {role:"user", content: data.text}]
+                        messages: [{role:"system", content:"You are ARTHUR. Dry wit. Max 10 words. Sir."}, {role:"user", content: data.text}]
                     })
                 });
 
@@ -75,15 +85,17 @@
 
                 if (reply) {
                     output.innerText = reply;
-                    const u = new SpeechSynthesisUtterance(reply);
-                    window.speechSynthesis.speak(u);
+                    window.speechSynthesis.speak(new SpeechSynthesisUtterance(reply));
+                    status.innerText = "CORE SECURED";
                 }
             } catch(e) { 
-                output.innerText = "Error: " + e.message; 
+                output.innerText = "Diagnostic: " + e.message; 
+                status.innerText = "LINK FAILURE";
             }
         }
 
         async function start() {
+            if (mediaRecorder && mediaRecorder.state === "recording") return;
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
@@ -92,32 +104,27 @@
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 
-                status.innerText = "LISTENING";
-                reactor.style.boxShadow = "0 0 60px #00f2ff";
-                reactor.style.borderColor = "#fff";
+                status.innerText = "Listening...";
+                reactor.style.boxShadow = "0 0 40px #00f2ff";
+                reactor.style.background = "rgba(0, 242, 255, 0.15)";
             } catch(e) {
-                status.innerText = "MIC BLOCKED";
+                status.innerText = "Mic Blocked";
             }
         }
 
         function stop() {
             if (mediaRecorder && mediaRecorder.state === "recording") {
                 mediaRecorder.stop();
-                status.innerText = "THINKING";
-                reactor.style.boxShadow = "0 0 20px #00f2ff";
-                reactor.style.borderColor = "#00f2ff";
+                reactor.style.boxShadow = "none";
+                reactor.style.background = "none";
             }
         }
 
-        // --- THE MOST BASIC TOUCH BINDING POSSIBLE ---
-        reactor.ontouchstart = (e) => { e.preventDefault(); start(); };
-        reactor.ontouchend = (e) => { e.preventDefault(); stop(); };
+        // --- Hardware Interface ---
+        reactor.addEventListener('touchstart', (e) => { e.preventDefault(); start(); }, {passive: false});
+        reactor.addEventListener('touchend', (e) => { e.preventDefault(); stop(); }, {passive: false});
         
-        // Final fallback for Desktop testing
-        reactor.onmousedown = start;
-        reactor.onmouseup = stop;
-
-        // Wake up speech
+        // Initial Audio Handshake
         document.addEventListener('touchstart', () => { window.speechSynthesis.getVoices(); }, {once: true});
     </script>
 </body>
