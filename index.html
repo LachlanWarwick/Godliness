@@ -3,143 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>ARTHUR v7.9</title>
+    <title>ARTHUR v8.1</title>
     <style>
-        :root { --glow: #00f2ff; --bg: #000b14; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
-        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; }
-        .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
-        #display { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
-        #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px; }
-        #output { font-size: 1rem; font-style: italic; opacity: 0.9; }
-        #vault-icon { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; opacity: 0.4; }
-        #config { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #001520; border: 2px solid var(--glow); padding: 30px; border-radius: 15px; width: 90%; z-index: 100; }
-        input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 10px 0; padding: 12px; font-family: monospace; }
-        button { background: var(--glow); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; border-radius: 5px; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        :root { --glow: #00f2ff; --bg: #000; }
+        body { background: var(--bg); color: var(--glow); font-family: monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        #core { width: 150px; height: 150px; border: 3px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; box-shadow: 0 0 20px var(--glow); cursor: pointer; -webkit-user-select: none; }
+        #status { margin-top: 30px; font-size: 0.8rem; letter-spacing: 2px; text-align: center; width: 80%; }
+        #vault { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; opacity: 0.3; }
+        #panel { display: none; position: fixed; background: #111; border: 1px solid var(--glow); padding: 20px; width: 80%; z-index: 10; }
+        input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 10px 0; padding: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="vault-icon" onclick="toggleVault()">⚙️</div>
+<div id="vault" onclick="v()">⚙️</div>
+<div id="panel" id="p">
+    <input type="password" id="gk" placeholder="Groq Key">
+    <input type="password" id="ok" placeholder="OpenAI Key">
+    <button onclick="s()" style="width:100%; background:var(--glow); border:none; padding:10px; font-weight:bold;">SYNC</button>
+</div>
 
-    <div id="config">
-        <h3 style="margin:0">VAULT</h3>
-        <input type="password" id="g-in" placeholder="Groq Key (gsk_...)">
-        <input type="password" id="o-in" placeholder="OpenAI Key (sk-...)">
-        <button onclick="saveKeys()">SYNC LINK</button>
-    </div>
+<div id="core" id="c">A</div>
+<div id="status" id="st">READY</div>
 
-    <div id="arc-reactor">
-        <div class="ring"></div>
-        A
-    </div>
+<script>
+    let rec, chunks = [];
+    const st = document.getElementById('status');
 
-    <div id="display">
-        <div id="status">OFFLINE</div>
-        <div id="output">"Tap Gear to Initialize, Sir."</div>
-    </div>
+    function v() { const p = document.getElementById('panel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; }
+    function s() { localStorage.setItem('gk', document.getElementById('gk').value.trim()); localStorage.setItem('ok', document.getElementById('ok').value.trim()); v(); st.innerText = "LINKED"; }
 
-    <script>
-        const status = document.getElementById('status');
-        const output = document.getElementById('output');
-        const reactor = document.getElementById('arc-reactor');
-        let mediaRecorder, audioChunks = [];
+    async function process(blob) {
+        st.innerText = "UPLOADING...";
+        const ok = localStorage.getItem('ok'), gk = localStorage.getItem('gk');
+        const fd = new FormData();
+        fd.append("file", blob, "audio.m4a");
+        fd.append("model", "whisper-1");
 
-        function toggleVault() {
-            const c = document.getElementById('config');
-            c.style.display = c.style.display === 'block' ? 'none' : 'block';
-        }
+        try {
+            // v8.1: Purest Fetch call possible
+            const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + ok },
+                body: fd
+            });
+            const data = await res.json();
+            think(data.text, gk);
+        } catch(e) { st.innerText = "LOAD FAILED: DISABLE PRIVATE RELAY"; }
+    }
 
-        function saveKeys() {
-            localStorage.setItem('gk', document.getElementById('g-in').value.trim());
-            localStorage.setItem('ok', document.getElementById('o-in').value.trim());
-            toggleVault();
-            status.innerText = "READY";
-            output.innerText = "Systems online, Sir.";
-        }
-
-        async function processVoice(blob, ok, gk) {
-            status.innerText = "UPLOADING...";
-            const fd = new FormData();
-            fd.append("file", blob, "rec.m4a");
-            fd.append("model", "whisper-1");
-
-            try {
-                // V7.9 Fix: Use simplified fetch to avoid Safari "Load failed"
-                const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${ok.replace(/[\u2013\u2014]/g, "-")}` },
-                    body: fd
-                });
-
-                if (!res.ok) throw new Error("Whisper Denied (Check Credits)");
-                const data = await res.json();
-                think(data.text, gk);
-            } catch(e) {
-                status.innerText = "EARS_ERROR";
-                output.innerText = "Diagnostic: " + e.message;
-            }
-        }
-
-        async function think(text, gk) {
-            status.innerText = "THINKING...";
-            try {
-                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: { 
-                        "Authorization": `Bearer ${gk.replace(/[\u2013\u2014]/g, "-")}`, 
-                        "Content-Type": "application/json" 
-                    },
-                    body: JSON.stringify({
-                        model: "llama-3.1-8b-instant",
-                        messages: [{role:"system", content:"You are ARTHUR, British AI. Max 12 words. Address as Sir."}, {role:"user", content: text}]
-                    })
-                });
-                const data = await res.json();
-                const reply = data.choices.message.content;
-                output.innerText = reply;
-                speak(reply);
-                status.innerText = "READY";
-            } catch(e) { 
-                status.innerText = "BRAIN_ERROR";
-                output.innerText = "Diagnostic: " + e.message;
-            }
-        }
-
-        async function startListening() {
-            const gk = localStorage.getItem('gk'), ok = localStorage.getItem('ok');
-            if(!gk || !ok) return toggleVault();
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/mp4' });
-                audioChunks = [];
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                mediaRecorder.onstop = () => processVoice(new Blob(audioChunks, { type: 'audio/mp4' }), ok, gk);
-                
-                // V7.9 Fix: Start with 1000ms timeslice for better Safari stability
-                mediaRecorder.start(1000); 
-                status.innerText = "LISTENING";
-            } catch(e) {
-                status.innerText = "MIC_BLOCK";
-                output.innerText = "Enable Mic in Safari Settings.";
-            }
-        }
-
-        function speak(text) {
-            window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(text);
-            const v = window.speechSynthesis.getVoices();
-            u.voice = v.find(v => v.lang.includes('en-GB')) || v;
+    async function think(t, gk) {
+        st.innerText = "THINKING...";
+        try {
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + gk, "Content-Type": "application/json" },
+                body: JSON.stringify({ model: "llama-3.1-8b-instant", messages: [{role:"system", content:"You are ARTHUR. Max 10 words. Sir."}, {role:"user", content: t}]})
+            });
+            const d = await res.json();
+            const r = d.choices.message.content;
+            st.innerText = r;
+            const u = new SpeechSynthesisUtterance(r);
+            u.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB'));
             window.speechSynthesis.speak(u);
-        }
+        } catch(e) { st.innerText = "BRAIN ERROR"; }
+    }
 
-        reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
-        reactor.addEventListener('touchend', () => { if(mediaRecorder) mediaRecorder.stop(); });
-        document.body.addEventListener('click', () => { window.speechSynthesis.getVoices(); }, {once: true});
-    </script>
+    async function start() {
+        try {
+            const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+            rec = new MediaRecorder(s);
+            chunks = [];
+            rec.ondataavailable = e => chunks.push(e.data);
+            rec.onstop = () => process(new Blob(chunks, { type: 'audio/mp4' }));
+            rec.start();
+            st.innerText = "LISTENING...";
+        } catch(e) { st.innerText = "MIC ERROR"; }
+    }
+
+    const c = document.getElementById('core');
+    c.addEventListener('touchstart', (e) => { e.preventDefault(); start(); });
+    c.addEventListener('touchend', () => { if(rec) rec.stop(); });
+</script>
 </body>
 </html>
