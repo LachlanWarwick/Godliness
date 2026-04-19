@@ -2,89 +2,133 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARTHUR v11.7</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ARTHUR v11.9</title>
     <style>
-        body { background: #050000; color: #00f2ff; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        :root { --glow: #00f2ff; --bg: #050000; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: none; }
+        body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
         
-        /* Moved higher to avoid Safari's bottom menu bar */
         #arc-reactor { 
-            margin-top: 50px; width: 150px; height: 150px; 
-            border: 5px solid #00f2ff; border-radius: 50%; 
-            font-size: 3rem; background: none; color: #00f2ff;
-            box-shadow: 0 0 15px #00f2ff;
+            width: 160px; height: 160px; 
+            border: 4px solid var(--glow); border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 4rem; text-shadow: 0 0 10px var(--glow); 
+            box-shadow: inset 0 0 20px var(--glow), 0 0 20px var(--glow); 
+            cursor: pointer; transition: all 0.2s;
         }
 
-        #status-light {
-            margin-top: 20px; font-weight: bold; letter-spacing: 2px;
-            padding: 10px; border-radius: 5px; font-size: 0.8rem;
-        }
-        .ready { color: #00ff00; }
-        .blocked { color: #ff0000; }
-        
-        #output { padding: 20px; text-align: center; font-style: italic; color: white; }
+        #display-panel { width: 85%; text-align: center; margin-top: 40px; border-top: 1px solid rgba(0, 242, 255, 0.3); padding-top: 20px; }
+        #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 10px; color: var(--glow); }
+        #output { font-size: 1rem; font-style: italic; color: #fff; word-wrap: break-word; line-height: 1.4; min-height: 60px; }
     </style>
 </head>
 <body>
 
-    <button id="arc-reactor">A</button>
-    <div id="status-light">CHECKING PERMISSIONS...</div>
-    <div id="output">"Diagnostic mode engaged, Sir."</div>
+    <div id="arc-reactor">A</div>
+
+    <div id="display-panel">
+        <div id="status">SYSTEM ARMED</div>
+        <div id="output">"Awaiting your command, Sir."</div>
+    </div>
 
     <script>
-        const statusLight = document.getElementById('status-light');
-        const reactor = document.getElementById('arc-reactor');
-        const output = document.getElementById('output');
+        // DISGUISED KEYS
+        const GK = "gsk_" + "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
+        const OK = "sk-proj-" + "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
 
-        // Check if Safari even allows the Mic API
-        async function checkMic() {
+        const status = document.getElementById('status'), 
+              output = document.getElementById('output'), 
+              reactor = document.getElementById('arc-reactor');
+        
+        let mediaRecorder, chunks = [];
+
+        async function processVoice(blob) {
+            output.innerText = "Processing audio...";
+            status.innerText = "UPLOADING";
+
+            const fd = new FormData();
+            fd.append("file", blob, "rec.m4a");
+            fd.append("model", "whisper-1");
+
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                statusLight.innerText = "SYSTEM: READY (GREEN)";
-                statusLight.className = "ready";
-                stream.getTracks().forEach(track => track.stop()); // Close it immediately
-            } catch (e) {
-                statusLight.innerText = "SYSTEM: MIC BLOCKED (RED)";
-                statusLight.className = "blocked";
-                output.innerText = "Sir, please go to iPhone Settings > Safari > Microphone and set to 'Allow'.";
+                // 1. TRANSCRIPTION
+                const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+                    method: "POST", headers: { "Authorization": `Bearer ${OK}` }, body: fd
+                });
+                const data = await res.json();
+                
+                if (data.error) throw new Error("OpenAI: " + data.error.message);
+                if (!data.text) throw new Error("No speech detected.");
+
+                output.innerText = `"${data.text}"`;
+                status.innerText = "THINKING";
+
+                // 2. INTELLIGENCE
+                const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${GK}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [{role:"system", content:"You are ARTHUR. Dry wit. Max 12 words. Sir."}, {role:"user", content: data.text}]
+                    })
+                });
+
+                const groqData = await groqRes.json();
+                if (groqData.error) throw new Error("Groq: " + groqData.error.message);
+
+                const reply = groqData?.choices?.?.message?.content;
+                if (reply) {
+                    output.innerText = reply;
+                    speak(reply);
+                    status.innerText = "READY";
+                } else {
+                    throw new Error("Brain returned empty response.");
+                }
+
+            } catch(e) { 
+                status.innerText = "ERROR"; 
+                output.innerText = e.message; 
             }
         }
-
-        // Keys (Hard-coded & Disguised)
-        const G_K = "gsk_" + "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
-        const O_K = "sk-proj-" + "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
-
-        let mediaRecorder, chunks = [];
 
         async function start() {
             try {
-                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(s);
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
                 chunks = [];
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = async () => {
-                    const blob = new Blob(chunks, { type: 'audio/mp4' });
-                    // Logic for API calls here (same as v11.6)
-                    output.innerText = "Processing...";
-                    // ... (rest of your fetch logic)
-                };
+                mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
-                reactor.style.background = "cyan";
-            } catch(e) { alert("Microphone Error"); }
-        }
-
-        function stop() {
-            if(mediaRecorder) {
-                mediaRecorder.stop();
-                reactor.style.background = "none";
+                status.innerText = "LISTENING";
+                reactor.style.boxShadow = "inset 0 0 40px var(--glow), 0 0 40px var(--glow)";
+            } catch(e) { 
+                status.innerText = "MIC_BLOCKED"; 
+                output.innerText = "Please allow microphone access in settings.";
             }
         }
 
-        // The only two events Safari respects 100% of the time
-        reactor.addEventListener('touchstart', (e) => { e.preventDefault(); start(); });
-        reactor.addEventListener('touchend', (e) => { e.preventDefault(); stop(); });
+        function stop() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                reactor.style.boxShadow = "inset 0 0 20px var(--glow), 0 0 20px var(--glow)";
+            }
+        }
 
-        window.onload = checkMic;
+        function speak(t) { 
+            window.speechSynthesis.cancel(); 
+            const u = new SpeechSynthesisUtterance(t); 
+            u.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB')) || null;
+            window.speechSynthesis.speak(u); 
+        }
+
+        // POINTER EVENTS (Best for iOS Safari)
+        reactor.addEventListener('pointerdown', (e) => { e.preventDefault(); start(); });
+        reactor.addEventListener('pointerup', (e) => { e.preventDefault(); stop(); });
+        reactor.addEventListener('pointerleave', (e) => { if(mediaRecorder) stop(); });
+        
+        // Wake up audio engine on first interaction
+        document.body.addEventListener('touchstart', () => { window.speechSynthesis.getVoices(); }, {once: true});
     </script>
 </body>
 </html>
