@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v8.6</title>
+    <title>ARTHUR v8.7</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
@@ -12,29 +12,28 @@
         #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
         #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px; }
         #output { font-size: 1.1rem; font-style: italic; }
-        #vault-icon { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; opacity: 0.4; cursor: pointer; }
-        #config-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #001520; border: 2px solid var(--glow); padding: 30px; border-radius: 15px; width: 90%; z-index: 100; box-shadow: 0 0 50px #000; }
-        input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 10px 0; padding: 12px; font-family: monospace; border-radius: 5px; }
-        button { background: var(--glow); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 5px; }
+        #vault-icon { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; opacity: 0.4; }
+        #config-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #001520; border: 2px solid var(--glow); padding: 30px; border-radius: 15px; width: 90%; z-index: 100; }
+        input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 10px 0; padding: 12px; font-family: monospace; }
+        button { background: var(--glow); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
     <div id="vault-icon" onclick="toggleVault()">⚙️</div>
-
     <div id="config-panel">
-        <h3 style="margin:0; color: #fff;">SYSTEM CALIBRATION</h3>
-        <input type="password" id="g-input" placeholder="Groq Key (gsk_...)">
-        <input type="password" id="o-input" placeholder="OpenAI Key (sk-...)">
-        <button onclick="saveKeys()">INITIALIZE NEURAL LINK</button>
+        <h3 style="margin:0">CALIBRATION</h3>
+        <input type="password" id="g-input" placeholder="Groq Key">
+        <input type="password" id="o-input" placeholder="OpenAI Key">
+        <button onclick="saveKeys()">SYNC</button>
     </div>
 
     <div id="arc-reactor"><div class="ring"></div>A</div>
 
     <div id="display-panel">
         <div id="status">READY</div>
-        <div id="output">"Diagnostic complete. Systems clear, Sir."</div>
+        <div id="output">"Standing by for voice command, Sir."</div>
     </div>
 
     <script>
@@ -45,9 +44,7 @@
         function saveKeys() { 
             localStorage.setItem('gk', document.getElementById('g-input').value.trim()); 
             localStorage.setItem('ok', document.getElementById('o-input').value.trim()); 
-            toggleVault(); 
-            status.innerText = "ONLINE"; 
-            output.innerText = "Neural Link Synchronized.";
+            toggleVault(); status.innerText = "ONLINE"; 
         }
 
         async function processVoice(blob) {
@@ -59,19 +56,14 @@
 
             try {
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${ok}` },
-                    body: fd
+                    method: "POST", headers: { "Authorization": `Bearer ${ok}` }, body: fd
                 });
                 const data = await res.json();
                 if (data.text) {
                     output.innerText = `"${data.text}"`;
                     think(data.text, gk);
-                } else { throw new Error(data.error?.message || "Transcription failed"); }
-            } catch(e) {
-                status.innerText = "EARS_ERROR";
-                output.innerText = "Diagnostic: " + e.message;
-            }
+                } else { throw new Error(data.error?.message || "Ears Muffled"); }
+            } catch(e) { status.innerText = "EARS_ERROR"; output.innerText = "Diagnostic: " + e.message; }
         }
 
         async function think(text, gk) {
@@ -82,25 +74,26 @@
                     headers: { "Authorization": `Bearer ${gk}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role:"system", content:"You are ARTHUR. A British AI squire. Formal, dry wit. Max 12 words. Address as Sir."}, {role:"user", content: text}]
+                        messages: [{role:"system", content:"You are ARTHUR. Dry British wit. Max 10 words. Sir."}, {role:"user", content: text}]
                     })
                 });
                 
                 const data = await res.json();
                 
-                // --- CRITICAL V8.6 FIX: ROBUST DATA PATH CHECK ---
-                if (data && data.choices && data.choices && data.choices.message) {
+                // V8.7 DEEP SCAN: Log exactly what came back if it's weird
+                if (data?.choices?.?.message?.content) {
                     const reply = data.choices.message.content;
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
                 } else {
-                    const errMsg = data.error?.message || "Brain Out of Sync: Unexpected Data Structure";
-                    throw new Error(errMsg);
+                    // This catches everything from rate limits to empty objects
+                    const errorDetails = data.error?.message || JSON.stringify(data);
+                    throw new Error(errorDetails);
                 }
             } catch(e) { 
                 status.innerText = "BRAIN_ERROR"; 
-                output.innerText = "Diagnostic: " + e.message; 
+                output.innerText = "Diagnostic: " + e.message.substring(0, 100); 
             }
         }
 
@@ -121,8 +114,7 @@
         function speak(t) { 
             window.speechSynthesis.cancel(); 
             const u = new SpeechSynthesisUtterance(t); 
-            const voices = window.speechSynthesis.getVoices();
-            u.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
+            u.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB')) || null;
             window.speechSynthesis.speak(u); 
         }
 
