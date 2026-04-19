@@ -2,40 +2,56 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARTHUR: STEALTH CORE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>ARTHUR PROJECT: v7.2</title>
     <style>
-        :root { --glow: #00f2ff; --bg: #000; }
-        body { background: var(--bg); color: var(--glow); font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        :root { --glow: #00f2ff; --bg: #000b14; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--glow); font-family: 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
         
-        #arc-reactor { width: 140px; height: 140px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px var(--glow); cursor: pointer; transition: 0.3s; }
-        #arc-reactor:active { transform: scale(0.95); box-shadow: 0 0 30px var(--glow); }
-        
-        #status { margin-top: 20px; font-size: 0.7rem; letter-spacing: 2px; }
-        #output { width: 80%; text-align: center; margin-top: 20px; min-height: 40px; font-size: 0.9rem; }
+        /* HUD Visuals */
+        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 4rem; text-shadow: 0 0 15px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; transition: 0.2s; }
+        #arc-reactor:active { transform: scale(0.92); box-shadow: inset 0 0 40px var(--glow), 0 0 30px var(--glow); }
+        .ring { position: absolute; width: 110%; height: 110%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 2s linear infinite; opacity: 0.4; }
 
-        /* Secret Vault Styling */
-        #vault { position: absolute; top: 10px; right: 10px; font-size: 1.5rem; cursor: pointer; opacity: 0.3; }
-        #config-panel { display: none; position: absolute; background: #111; border: 1px solid var(--glow); padding: 20px; border-radius: 10px; z-index: 100; width: 80%; }
-        input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 10px 0; padding: 10px; box-sizing: border-box; }
-        button { background: var(--glow); color: #000; border: none; padding: 10px; width: 100%; font-weight: bold; }
+        #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); border-bottom: 1px solid var(--glow); padding: 25px 10px; min-height: 160px; display: flex; flex-direction: column; justify-content: center; background: rgba(0, 242, 255, 0.03); }
+        #status { font-size: 0.65rem; letter-spacing: 4px; font-weight: bold; margin-bottom: 10px; color: #fff; }
+        #output { font-size: 1rem; line-height: 1.4; font-style: italic; }
+
+        /* Secure Vault */
+        #vault-icon { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; opacity: 0.4; cursor: pointer; z-index: 10; }
+        #config-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #001520; border: 2px solid var(--glow); padding: 30px; border-radius: 15px; width: 85%; z-index: 100; box-shadow: 0 0 50px #000; }
+        input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 15px 0; padding: 12px; font-family: monospace; }
+        #save-btn { background: var(--glow); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; letter-spacing: 1px; }
+
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div id="vault" onclick="toggleVault()">⚙️</div>
+    <div id="vault-icon" onclick="toggleVault()">⚙️</div>
 
     <div id="config-panel">
-        <label>GROQ KEY:</label>
-        <input type="password" id="groq-input" placeholder="Paste Groq Key here">
-        <label>OPENAI KEY:</label>
-        <input type="password" id="openai-input" placeholder="Paste OpenAI Key here">
-        <button onclick="saveKeys()">INITIALIZE LINKS</button>
+        <h3 style="margin-top:0">CRYPTO VAULT</h3>
+        <label style="font-size: 0.8rem">GROQ CLOUD KEY:</label>
+        <input type="password" id="groq-input" placeholder="gsk_...">
+        <label style="font-size: 0.8rem">OPENAI WHISPER KEY:</label>
+        <input type="password" id="openai-input" placeholder="sk-...">
+        <button id="save-btn" onclick="saveKeys()">INITIALIZE NEURAL LINK</button>
     </div>
 
-    <div id="arc-reactor">A</div>
-    <div id="status">NEURAL LINK: LOCKED</div>
-    <div id="output">"Awaiting API credentials, Sir."</div>
+    <div id="arc-reactor">
+        <div class="ring"></div>
+        A
+    </div>
+
+    <div id="display-panel">
+        <div id="status">NEURAL_LINK_OFFLINE</div>
+        <div id="output">"Sir, please tap the gear icon to provide API credentials."</div>
+    </div>
+
+    <div id="status-footer" style="font-size: 0.6rem; opacity: 0.5;">PROJECT ARTHUR // VER 7.2</div>
 
     <script>
         const status = document.getElementById('status');
@@ -49,33 +65,42 @@
         }
 
         function saveKeys() {
-            localStorage.setItem('groq_key', document.getElementById('groq-input').value);
-            localStorage.setItem('openai_key', document.getElementById('openai-input').value);
+            localStorage.setItem('groq_key', document.getElementById('groq-input').value.trim());
+            localStorage.setItem('openai_key', document.getElementById('openai-input').value.trim());
             toggleVault();
-            status.innerText = "NEURAL LINK: STANDBY";
-            output.innerText = "Credentials accepted. System ready.";
+            status.innerText = "NEURAL_LINK: STANDBY";
+            output.innerText = "Credentials accepted, Sir. Ready for command.";
         }
 
         async function startListening() {
             const gKey = localStorage.getItem('groq_key');
             const oKey = localStorage.getItem('openai_key');
-            if(!gKey || !oKey) { toggleVault(); return; }
+            
+            if(!gKey || !oKey) {
+                toggleVault();
+                return;
+            }
 
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.start();
-            status.innerText = "LISTENING...";
-            audioChunks = [];
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.start();
+                status.innerText = "LISTENING...";
+                audioChunks = [];
 
-            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-            mediaRecorder.onstop = async () => {
-                const blob = new Blob(audioChunks, { type: 'audio/webm' });
-                processVoice(blob, oKey, gKey);
-            };
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    processVoice(blob, oKey, gKey);
+                };
+            } catch(e) {
+                status.innerText = "HARDWARE_ERROR";
+                output.innerText = "Microphone access denied, Sir.";
+            }
         }
 
         async function processVoice(blob, oKey, gKey) {
-            status.innerText = "UPLOADING TO EARS...";
+            status.innerText = "TRANSCRIBING...";
             const formData = new FormData();
             formData.append("file", blob, "audio.webm");
             formData.append("model", "whisper-1");
@@ -86,38 +111,68 @@
                     method: "POST",
                     body: formData
                 });
+                if(!res.ok) throw new Error("Whisper Link Failed");
                 const data = await res.json();
                 think(data.text, gKey);
-            } catch(e) { status.innerText = "EARS ERROR"; }
+            } catch(e) {
+                status.innerText = "EARS_ERROR";
+                output.innerText = "Whisper API rejected the link.";
+            }
         }
 
         async function think(text, gKey) {
-            status.innerText = "ARTHUR THINKING...";
+            status.innerText = "THINKING...";
             try {
                 const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    headers: { "Authorization": `Bearer ${gKey}`, "Content-Type": "application/json" },
+                    headers: { 
+                        "Authorization": `Bearer ${gKey}`, 
+                        "Content-Type": "application/json" 
+                    },
                     method: "POST",
                     body: JSON.stringify({
-                        model: "llama3-8b-8192",
-                        messages: [{role:"system", content:"You are ARTHUR, a British AI. Formal. Max 15 words. Sir."}, {role:"user", content: text}]
+                        model: "llama-3.1-8b-instant",
+                        messages: [
+                            {role:"system", content:"You are ARTHUR, a British AI squire. Formal, dry wit. Call user Sir. Max 15 words."}, 
+                            {role:"user", content: text}
+                        ]
                     })
                 });
+
+                if (!res.ok) {
+                    const errorInfo = await res.json();
+                    throw new Error(`Code ${res.status}: ${errorInfo.error.message}`);
+                }
+
                 const data = await res.json();
                 const reply = data.choices.message.content;
                 output.innerText = reply;
                 speak(reply);
-                status.innerText = "NEURAL LINK: STANDBY";
-            } catch(e) { status.innerText = "BRAIN ERROR"; }
+                status.innerText = "NEURAL_LINK: STANDBY";
+            } catch(e) { 
+                status.innerText = "BRAIN_ERROR";
+                output.innerText = "Diagnostic: " + e.message;
+            }
         }
 
         function speak(text) {
+            window.speechSynthesis.cancel();
             const utter = new SpeechSynthesisUtterance(text);
-            utter.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB')) || window.speechSynthesis.getVoices();
+            const voices = window.speechSynthesis.getVoices();
+            utter.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
+            utter.pitch = 0.9;
             window.speechSynthesis.speak(utter);
         }
 
+        // Trigger Listen
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
-        reactor.addEventListener('touchend', () => { if(mediaRecorder) mediaRecorder.stop(); });
+        reactor.addEventListener('touchend', () => { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
+        
+        // For Desktop testing
+        reactor.addEventListener('mousedown', startListening);
+        reactor.addEventListener('mouseup', () => { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
+
+        // Wake up audio
+        document.body.addEventListener('click', () => { window.speechSynthesis.getVoices(); }, {once: true});
     </script>
 </body>
 </html>
