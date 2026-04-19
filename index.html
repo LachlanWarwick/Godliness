@@ -45,6 +45,7 @@
     </div>
 
     <script>
+        // API KEYS
         const GK_A = "gsk_", GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
         const OK_A = "sk-proj-", OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
         const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
@@ -52,15 +53,18 @@
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor');
         let mediaRecorder, chunks = [];
 
+        // INITIALIZATION
         document.getElementById('init-btn').addEventListener('click', async () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
                 
-                // Wake up speech engine
+                // Warm up the speech engine
                 window.speechSynthesis.getVoices();
                 
-                speak("The ARTHUR protocol is online, Sir. I am using the default audio channel.");
+                setTimeout(() => {
+                    speak("The ARTHUR protocol is online, Sir. Systems normal.");
+                }, 600);
                 
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => { 
@@ -70,6 +74,36 @@
             } catch (e) { alert("Microphone access is mandatory, Sir."); }
         });
 
+        // SPEECH ENGINE (REPAIRED)
+        function speak(t) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(t);
+            
+            const setVoice = () => {
+                const voices = window.speechSynthesis.getVoices();
+                // Specifically hunt for British English
+                const british = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB');
+                const anyEnglish = voices.find(v => v.lang.startsWith('en'));
+                
+                u.voice = british || anyEnglish || voices[0];
+                u.volume = 1.0;
+                u.rate = 0.95;
+                u.pitch = 1.0;
+                
+                u.onstart = () => reactor.classList.add('active');
+                u.onend = () => reactor.classList.remove('active');
+                
+                window.speechSynthesis.speak(u);
+            };
+
+            if (window.speechSynthesis.getVoices().length === 0) {
+                window.speechSynthesis.onvoiceschanged = setVoice;
+            } else {
+                setVoice();
+            }
+        }
+
+        // VOICE PROCESSING
         async function processVoice(blob) {
             status.innerText = "PROCESSING...";
             reactor.classList.remove('listening');
@@ -84,28 +118,6 @@
                 const data = await res.json();
                 const text = data.text.toLowerCase().trim().replace(/[.?!]/g, "");
                 output.innerText = `"${data.text}"`;
-
-                // --- STRICT APP LAUNCHING (Keywords ONLY) ---
-                const launchKeywords = ["open", "launch", "run", "start"];
-                let targetApp = null;
-
-                for (let kw of launchKeywords) {
-                    if (text.startsWith(kw + " ")) {
-                        targetApp = text.split(kw + " ").trim();
-                        break;
-                    }
-                }
-
-                if (targetApp) {
-                    status.innerText = "EXECUTING...";
-                    speak(`Very well, Sir. Accessing ${targetApp}.`);
-                    setTimeout(() => { 
-                        const urls = {"spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "instagram": "instagram://"};
-                        window.location.href = urls[targetApp] || `shortcuts://run-shortcut?name=${encodeURIComponent(targetApp)}`;
-                        setTimeout(() => { status.innerText = "READY"; }, 2000);
-                    }, 1200);
-                    return;
-                }
 
                 // --- UTILITY ---
                 if (text.includes("time")) {
@@ -122,14 +134,14 @@
                     return;
                 }
 
-                // --- BRAIN ---
+                // --- AI BRAIN ---
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are ARTHUR, a loyal British AI butler. Address user as Sir. Max 25 words."},
+                            {role: "system", content: "You are ARTHUR, a loyal British AI butler. Address user as Sir. Max 25 words. Help with anything."},
                             {role: "user", content: data.text}
                         ]
                     })
@@ -146,25 +158,7 @@
             }
         }
 
-        function speak(t) {
-            window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(t);
-            const voices = window.speechSynthesis.getVoices();
-            
-            // USE ANY VOICE - Grab the first one available
-            if (voices.length > 0) {
-                u.voice = voices[0];
-            }
-            
-            u.volume = 1.0;
-            u.rate = 0.9;
-            
-            u.onstart = () => reactor.classList.add('active');
-            u.onend = () => reactor.classList.remove('active');
-            
-            window.speechSynthesis.speak(u);
-        }
-
+        // RECORDING LOGIC
         async function startListening() {
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -178,9 +172,13 @@
             } catch(e) { status.innerText = "MIC_ERROR"; }
         }
 
+        // TOUCH CONTROLS
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
         reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
+        
+        // MOUSE FALLBACK
+        reactor.addEventListener('mousedown', startListening);
+        reactor.addEventListener('mouseup', () => { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
     </script>
 </body>
 </html>
- i cant hear him and it did use to work with just the default british voice but its not on now
