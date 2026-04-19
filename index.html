@@ -3,87 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v8.1</title>
+    <title>ARTHUR v8.2</title>
     <style>
-        :root { --glow: #00f2ff; --bg: #000; }
-        body { background: var(--bg); color: var(--glow); font-family: monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-        #core { width: 150px; height: 150px; border: 3px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; box-shadow: 0 0 20px var(--glow); cursor: pointer; -webkit-user-select: none; }
-        #status { margin-top: 30px; font-size: 0.8rem; letter-spacing: 2px; text-align: center; width: 80%; }
-        #vault { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; opacity: 0.3; }
-        #panel { display: none; position: fixed; background: #111; border: 1px solid var(--glow); padding: 20px; width: 80%; z-index: 10; }
-        input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 10px 0; padding: 10px; }
+        :root { --glow: #00f2ff; --bg: #000b14; }
+        body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
+        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; }
+        .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
+        #display { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; background: rgba(0,242,255,0.02); min-height: 150px; }
+        #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px; }
+        #output { font-size: 1rem; font-style: italic; }
+        #config-btn { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; opacity: 0.4; }
+        #vault { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #001520; border: 2px solid var(--glow); padding: 30px; border-radius: 15px; width: 90%; z-index: 100; }
+        input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 10px 0; padding: 12px; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-<div id="vault" onclick="v()">⚙️</div>
-<div id="panel" id="p">
-    <input type="password" id="gk" placeholder="Groq Key">
-    <input type="password" id="ok" placeholder="OpenAI Key">
-    <button onclick="s()" style="width:100%; background:var(--glow); border:none; padding:10px; font-weight:bold;">SYNC</button>
-</div>
+    <div id="config-btn" onclick="toggleVault()">⚙️</div>
 
-<div id="core" id="c">A</div>
-<div id="status" id="st">READY</div>
+    <div id="vault">
+        <h3 style="margin:0">NEURAL VAULT</h3>
+        <input type="password" id="g-in" placeholder="Groq Key (gsk_...)">
+        <input type="password" id="o-in" placeholder="OpenAI Key (sk-...)">
+        <button onclick="saveKeys()" style="width:100%; background:var(--glow); border:none; padding:15px; font-weight:bold;">SYNC SYSTEM</button>
+    </div>
 
-<script>
-    let rec, chunks = [];
-    const st = document.getElementById('status');
+    <div id="arc-reactor"><div class="ring"></div>A</div>
 
-    function v() { const p = document.getElementById('panel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; }
-    function s() { localStorage.setItem('gk', document.getElementById('gk').value.trim()); localStorage.setItem('ok', document.getElementById('ok').value.trim()); v(); st.innerText = "LINKED"; }
+    <div id="display">
+        <div id="status">READY</div>
+        <div id="output">"Welcome back, Sir."</div>
+    </div>
 
-    async function process(blob) {
-        st.innerText = "UPLOADING...";
-        const ok = localStorage.getItem('ok'), gk = localStorage.getItem('gk');
-        const fd = new FormData();
-        fd.append("file", blob, "audio.m4a");
-        fd.append("model", "whisper-1");
+    <script>
+        const status = document.getElementById('status'), output = document.getElementById('output');
+        let mediaRecorder, chunks = [];
 
-        try {
-            // v8.1: Purest Fetch call possible
-            const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                method: "POST",
-                headers: { "Authorization": "Bearer " + ok },
-                body: fd
-            });
-            const data = await res.json();
-            think(data.text, gk);
-        } catch(e) { st.innerText = "LOAD FAILED: DISABLE PRIVATE RELAY"; }
-    }
+        function toggleVault() { const v = document.getElementById('vault'); v.style.display = v.style.display === 'block' ? 'none' : 'block'; }
+        function saveKeys() { 
+            localStorage.setItem('gk', document.getElementById('g-in').value.trim()); 
+            localStorage.setItem('ok', document.getElementById('o-in').value.trim()); 
+            toggleVault(); status.innerText = "ONLINE"; 
+        }
 
-    async function think(t, gk) {
-        st.innerText = "THINKING...";
-        try {
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: "POST",
-                headers: { "Authorization": "Bearer " + gk, "Content-Type": "application/json" },
-                body: JSON.stringify({ model: "llama-3.1-8b-instant", messages: [{role:"system", content:"You are ARTHUR. Max 10 words. Sir."}, {role:"user", content: t}]})
-            });
-            const d = await res.json();
-            const r = d.choices.message.content;
-            st.innerText = r;
-            const u = new SpeechSynthesisUtterance(r);
-            u.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB'));
-            window.speechSynthesis.speak(u);
-        } catch(e) { st.innerText = "BRAIN ERROR"; }
-    }
+        async function processVoice(blob) {
+            status.innerText = "UPLOADING...";
+            const ok = localStorage.getItem('ok'), gk = localStorage.getItem('gk');
+            const fd = new FormData();
+            fd.append("file", blob, "rec.m4a");
+            fd.append("model", "whisper-1");
 
-    async function start() {
-        try {
-            const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-            rec = new MediaRecorder(s);
-            chunks = [];
-            rec.ondataavailable = e => chunks.push(e.data);
-            rec.onstop = () => process(new Blob(chunks, { type: 'audio/mp4' }));
-            rec.start();
-            st.innerText = "LISTENING...";
-        } catch(e) { st.innerText = "MIC ERROR"; }
-    }
+            try {
+                const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${ok}` },
+                    body: fd
+                });
+                
+                const data = await res.json();
+                // FIX: Whisper returns .text, not .choices
+                if (data.text) {
+                    think(data.text, gk);
+                } else {
+                    throw new Error(data.error?.message || "Transcription failed");
+                }
+            } catch(e) {
+                status.innerText = "EARS_ERROR";
+                output.innerText = "Diagnostic: " + e.message;
+            }
+        }
 
-    const c = document.getElementById('core');
-    c.addEventListener('touchstart', (e) => { e.preventDefault(); start(); });
-    c.addEventListener('touchend', () => { if(rec) rec.stop(); });
-</script>
+        async function think(text, gk) {
+            status.innerText = "THINKING...";
+            try {
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${gk}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "llama-3.1-8b-instant",
+                        messages: [{role:"system", content:"You are ARTHUR. Dry British wit. Max 12 words. Sir."}, {role:"user", content: text}]
+                    })
+                });
+                const data = await res.json();
+                // FIX: Groq returns .choices.message.content
+                const reply = data.choices.message.content;
+                output.innerText = reply;
+                speak(reply);
+                status.innerText = "READY";
+            } catch(e) { 
+                status.innerText = "BRAIN_ERROR"; 
+                output.innerText = "Diagnostic: " + e.message; 
+            }
+        }
+
+        async function startListening() {
+            const gk = localStorage.getItem('gk'), ok = localStorage.getItem('ok');
+            if(!gk || !ok) return toggleVault();
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(s);
+                chunks = [];
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
+                mediaRecorder.start();
+                status.innerText = "LISTENING";
+            } catch(e) { status.innerText = "MIC_BLOCK"; }
+        }
+
+        function speak(t) { 
+            window.speechSynthesis.cancel(); 
+            const u = new SpeechSynthesisUtterance(t); 
+            u.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB')) || null; 
+            window.speechSynthesis.speak(u); 
+        }
+
+        const r = document.getElementById('arc-reactor');
+        r.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
+        r.addEventListener('touchend', () => { if(mediaRecorder) mediaRecorder.stop(); });
+        document.body.addEventListener('click', () => { window.speechSynthesis.getVoices(); }, {once: true});
+    </script>
 </body>
 </html>
