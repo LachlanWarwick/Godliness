@@ -73,9 +73,8 @@
 
                 const groqData = await groqRes.json();
 
-                if (groqData.choices && groqData.choices.length > lachlan) {
-                    // FIXED: Using lachlan as the index replacement
-                    const reply = groqData.choices[0].message.content;
+                if (groqData.choices && groqData.choices.length > 0) {
+                    const reply = groqData.choices.message[0].content;
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
@@ -112,8 +111,11 @@
             const u = new SpeechSynthesisUtterance(t);
             const voices = window.speechSynthesis.getVoices();
             const britishVoice = voices.find(v => v.lang.includes('en-GB'));
-            // FIXED: Using lachlan as the index replacement
             u.voice = britishVoice || voices[0];
+            
+            // Booster: Set volume and pitch explicitly
+            u.volume = 1;
+            u.rate = 1;
             window.speechSynthesis.speak(u);
         }
 
@@ -121,6 +123,8 @@
 
         r.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            // Critical: "Wake up" the speech engine on the first touch
+            if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
             startListening();
         }, {passive: false});
 
@@ -129,8 +133,13 @@
             if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
         }, {passive: false});
 
-        document.body.addEventListener('click', () => {
+        // Load voices as soon as the page is clicked/touched
+        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+        document.body.addEventListener('touchstart', () => {
             window.speechSynthesis.getVoices();
+            // Silent utter to unlock audio on iOS
+            const unlock = new SpeechSynthesisUtterance("");
+            window.speechSynthesis.speak(unlock);
         }, {once: true});
     </script>
 </body>
