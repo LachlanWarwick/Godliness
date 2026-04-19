@@ -3,12 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v11.1</title>
+    <title>ARTHUR v11.9 Stable</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
         body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
-        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; z-index: 5; }
+        
+        #arc-reactor { 
+            width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); 
+            box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); 
+            cursor: pointer; position: relative; z-index: 5; 
+            transition: transform 0.1s;
+        }
+
         .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
         #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
         #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px; color: var(--glow); }
@@ -22,7 +31,7 @@
 
     <div id="display-panel">
         <div id="status">NEURAL LINK ACTIVE</div>
-        <div id="output">"Ready for duty, Sir. Hold the core to speak."</div>
+        <div id="output">"Standing by, Sir. Hold the core to speak."</div>
     </div>
 
     <script>
@@ -36,6 +45,7 @@
         const F_OK = OK_A + OK_B;
 
         const status = document.getElementById('status'), output = document.getElementById('output');
+        const reactor = document.getElementById('arc-reactor');
         let mediaRecorder, chunks = [];
 
         async function processVoice(blob) {
@@ -45,52 +55,41 @@
             fd.append("model", "whisper-1");
 
             try {
-                // EAR (OpenAI Whisper)
+                // EAR (OpenAI)
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${F_OK}` },
-                    body: fd
+                    method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
-                if (data.error) throw new Error("OpenAI: " + data.error.message);
+                if (data.error) throw new Error(data.error.message);
 
                 output.innerText = `"${data.text}"`;
                 status.innerText = "THINKING...";
 
-                // BRAIN (Groq Llama 3)
+                // BRAIN (Groq)
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${F_GK}`,
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [
-                            {role: "system", content: "You are ARTHUR. A digital squire. Dry British wit. Max 10 words. Sir."},
-                            {role: "user", content: data.text}
-                        ]
+                        messages: [{role: "system", content: "You are ARTHUR. Dry British wit. Max 10 words. Sir."}, {role: "user", content: data.text}]
                     })
                 });
 
                 const groqData = await groqRes.json();
+                
+                // FIXED: Using index to access the message correctly
+                const reply = groqData?.choices?.?.message?.content;
 
-                if (groqData.choices && groqData.choices.length > 0) {
-                    // FIXED: Using to access the first item in the choices array
-                    const reply = groqData.choices[0].message.content;
+                if (reply) {
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
-                } else if (groqData.error) {
-                    throw new Error("Groq: " + groqData.error.message);
                 } else {
-                    throw new Error("Diagnostic: Brain response empty.");
+                    throw new Error(groqData?.error?.message || "Brain diagnostic failed.");
                 }
-
-            } catch(e) {
-                status.innerText = "SYSTEM ERROR";
-                output.innerText = e.message;
-                console.error(e);
+            } catch(e) { 
+                status.innerText = "SYSTEM ERROR"; 
+                output.innerText = e.message; 
             }
         }
 
@@ -103,35 +102,42 @@
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 status.innerText = "LISTENING";
-            } catch(e) {
-                status.innerText = "MIC_ERROR";
+            } catch(e) { 
+                status.innerText = "MIC_ERROR"; 
                 output.innerText = "Check microphone permissions, Sir.";
             }
         }
 
-        function speak(t) {
-            window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(t);
+        function speak(t) { 
+            window.speechSynthesis.cancel(); 
+            const u = new SpeechSynthesisUtterance(t); 
             const voices = window.speechSynthesis.getVoices();
-            u.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
-            window.speechSynthesis.speak(u);
+            
+            // FIXED: Ensuring we pass a single voice instance, not the whole array
+            const britishVoice = voices.find(v => v.lang.includes('en-GB'));
+            u.voice = britishVoice || voices;
+            
+            window.speechSynthesis.speak(u); 
         }
 
-        const r = document.getElementById('arc-reactor');
-
-        r.addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        const onStart = (e) => {
+            if(e.cancelable) e.preventDefault();
+            reactor.style.transform = "scale(0.95)";
             startListening();
-        }, {passive: false});
+        };
 
-        r.addEventListener('touchend', (e) => {
-            e.preventDefault();
+        const onEnd = (e) => {
+            if(e.cancelable) e.preventDefault();
+            reactor.style.transform = "scale(1)";
             if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
-        }, {passive: false});
+        };
 
-        document.body.addEventListener('click', () => {
-            window.speechSynthesis.getVoices();
-        }, {once: true});
+        reactor.addEventListener('touchstart', onStart, {passive: false});
+        reactor.addEventListener('touchend', onEnd, {passive: false});
+        reactor.addEventListener('mousedown', onStart);
+        reactor.addEventListener('mouseup', onEnd);
+
+        document.body.addEventListener('click', () => { window.speechSynthesis.getVoices(); }, {once: true});
     </script>
 </body>
 </html>
