@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v13.0 - REPAIRED</title>
+    <title>ARTHUR v13.0 - COMMAND PRO</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
@@ -47,23 +47,17 @@
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor');
         let mediaRecorder, chunks = [];
 
-        // --- CRITICAL AUDIO UNLOCK ---
         document.getElementById('init-btn').addEventListener('click', async () => {
-            // 1. Unmute the Web Audio Context
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             const ctx = new AudioContext();
             ctx.resume();
-
-            // 2. Play a "Silent" Utterance to prime the engine
             const prime = new SpeechSynthesisUtterance("");
             window.speechSynthesis.speak(prime);
 
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                
-                speak("The ARTHUR protocol is online. I am at your service, Sir.");
-                
+                speak("The ARTHUR protocol is online. Commands enabled, Sir.");
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => { 
                     document.getElementById('init-screen').style.display = 'none'; 
@@ -75,19 +69,13 @@
         function speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
-            
-            // Re-fetch voices inside the function
             const voices = window.speechSynthesis.getVoices();
             const british = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB');
-            const anyEnglish = voices.find(v => v.lang.startsWith('en'));
-            
-            msg.voice = british || anyEnglish || voices[0];
+            msg.voice = british || voices.find(v => v.lang.startsWith('en')) || voices[0];
             msg.rate = 0.9;
             msg.volume = 1.0;
-
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
-
             window.speechSynthesis.speak(msg);
         }
 
@@ -103,14 +91,46 @@
                     method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
+                const cmd = data.text.toLowerCase();
                 output.innerText = `"${data.text}"`;
 
+                // --- HARDCODED LOGIC FOR ACCURACY ---
+                if (cmd.includes("time")) {
+                    const now = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const reply = `It is currently ${now}, Sir.`;
+                    output.innerText = reply;
+                    speak(reply);
+                    status.innerText = "READY";
+                    return;
+                }
+
+                if (cmd.includes("open") || cmd.includes("launch")) {
+                    const apps = {"spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "instagram": "instagram://", "music": "music://"};
+                    for (let app in apps) {
+                        if (cmd.includes(app)) {
+                            speak(`Opening ${app} now, Sir.`);
+                            window.location.href = apps[app];
+                            return;
+                        }
+                    }
+                }
+
+                if (cmd.includes("run shortcut")) {
+                    const shortcutName = cmd.split("run shortcut").trim();
+                    if (shortcutName) {
+                        speak(`Executing shortcut: ${shortcutName}, Sir.`);
+                        window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`;
+                        return;
+                    }
+                }
+
+                // --- GENERAL INTELLIGENCE ---
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ARTHUR, a loyal British AI butler. Address user as Sir. Max 20 words."}, {role: "user", content: data.text}]
+                        messages: [{role: "system", content: "You are ARTHUR, a loyal British AI butler. Keep responses under 20 words."}, {role: "user", content: data.text}]
                     })
                 });
 
@@ -139,8 +159,6 @@
         reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
         reactor.addEventListener('mousedown', startListening);
         reactor.addEventListener('mouseup', () => { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
-        
-        // Ensure voices load
         window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     </script>
 </body>
