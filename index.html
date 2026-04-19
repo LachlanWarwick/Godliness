@@ -106,7 +106,7 @@
 
                 if (groqData.choices && groqData.choices.length > 0) {
                     // Fixed: Added .choices.message
-                    const reply = groqData.choices.message.content;
+                    const reply = groqData.choices[0].message.content;
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
@@ -138,7 +138,7 @@
             const britishVoice = voices.find(v => v.lang.includes('en-GB'));
             
             // Fixed: Using voices to pick the first backup voice if British is missing
-            u.voice = britishVoice || voices;
+            u.voice = britishVoice || voices[0];
             u.volume = 1;
             window.speechSynthesis.speak(u);
         }
