@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v8.9</title>
+    <title>ARTHUR v9.0</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
         body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
         #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; z-index: 5; }
-        .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; pointer-events: none; }
+        .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
         #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
         #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px; }
         #output { font-size: 1.1rem; font-style: italic; }
         #vault-icon { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; opacity: 0.4; cursor: pointer; z-index: 20; }
         #config-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #001520; border: 2px solid var(--glow); padding: 30px; border-radius: 15px; width: 90%; z-index: 100; box-shadow: 0 0 100px #000; }
         input { -webkit-user-select: text; user-select: text; width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 10px 0; padding: 12px; font-family: monospace; }
-        button { background: var(--glow); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; }
+        button { background: var(--glow); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -26,8 +26,8 @@
 
     <div id="config-panel">
         <h3 style="margin:0">CALIBRATION</h3>
-        <input type="password" id="g-input" placeholder="Groq Key (gsk_...)">
-        <input type="password" id="o-input" placeholder="OpenAI Key (sk-...)">
+        <input type="password" id="g-input" placeholder="Groq Key">
+        <input type="password" id="o-input" placeholder="OpenAI Key">
         <button onclick="saveKeys()">SYNC NEURAL LINK</button>
     </div>
 
@@ -35,7 +35,7 @@
 
     <div id="display-panel">
         <div id="status">READY</div>
-        <div id="output">"Finalizing neural pathways, Sir."</div>
+        <div id="output">"Stabilizing the core frequency, Sir."</div>
     </div>
 
     <script>
@@ -52,18 +52,18 @@
             localStorage.setItem('ok', document.getElementById('o-input').value.trim()); 
             toggleVault(); 
             status.innerText = "ONLINE"; 
-            output.innerText = "Keys Synced. Hold A to speak.";
         }
 
         async function processVoice(blob) {
-            status.innerText = "PROCESSING...";
+            status.innerText = "LINKING...";
             const ok = localStorage.getItem('ok'), gk = localStorage.getItem('gk');
+            
+            // V9.0: Forcing specific filename and type for API compatibility
             const fd = new FormData();
-            fd.append("file", blob, "audio.m4a");
+            fd.append("file", blob, "openai_audio.m4a");
             fd.append("model", "whisper-1");
 
             try {
-                // EARS (OpenAI)
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
                     method: "POST", headers: { "Authorization": `Bearer ${ok}` }, body: fd
                 });
@@ -73,7 +73,6 @@
                     output.innerText = `"${data.text}"`;
                     status.innerText = "THINKING...";
 
-                    // BRAIN (Groq)
                     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                         method: "POST",
                         headers: { "Authorization": `Bearer ${gk}`, "Content-Type": "application/json" },
@@ -83,21 +82,19 @@
                         })
                     });
 
-                    const groqData = await groqRes.json();
+                    // V9.0: Deep Status Check
+                    if (!groqRes.ok) {
+                        const errData = await groqRes.json();
+                        throw new Error(`Groq ${groqRes.status}: ${errData.error?.message || 'Server Rejected Request'}`);
+                    }
 
-                    // V8.9 FIX: Defensive check for Groq response structure
-                    if (groqData && groqData.choices && groqData.choices && groqData.choices.message) {
+                    const groqData = await groqRes.json();
+                    if (groqData.choices && groqData.choices) {
                         const reply = groqData.choices.message.content;
                         output.innerText = reply;
                         speak(reply);
                         status.innerText = "READY";
-                    } else {
-                        // If Groq fails, show the exact error message
-                        const errorMsg = groqData.error?.message || "Brain Out of Sync: Unknown Error";
-                        throw new Error(errorMsg);
                     }
-                } else {
-                    throw new Error(data.error?.message || "Transcription failed.");
                 }
             } catch(e) { 
                 status.innerText = "ERR"; 
@@ -110,28 +107,26 @@
             if(!gk || !ok) return toggleVault();
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // V9.0: Using standard recorder for max compatibility
                 mediaRecorder = new MediaRecorder(s);
                 chunks = [];
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
+                mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mpeg' }));
                 mediaRecorder.start();
                 status.innerText = "LISTENING";
-            } catch(e) { status.innerText = "MIC_BLOCK"; output.innerText = "Allow Microphone Access."; }
+            } catch(e) { status.innerText = "MIC_BLOCK"; }
         }
 
         function speak(t) { 
             window.speechSynthesis.cancel(); 
             const u = new SpeechSynthesisUtterance(t); 
-            const voices = window.speechSynthesis.getVoices();
-            u.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
+            u.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB')) || null;
             window.speechSynthesis.speak(u); 
         }
 
         const r = document.getElementById('arc-reactor');
         r.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); }, {passive: false});
-        r.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); }, {passive: false});
-        
-        // Desk fallback
+        r.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder) mediaRecorder.stop(); }, {passive: false});
         document.body.addEventListener('click', () => { window.speechSynthesis.getVoices(); }, {once: true});
     </script>
 </body>
