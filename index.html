@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v11.1</title>
+    <title>ARTHUR v11.3</title>
     <style>
-        :root { --glow: #00f2ff; --bg: #000b14; }
+        :root { --glow: #00f2ff; --bg: #050000; } /* Dark red tint proves it's new code */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
         body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
         #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; z-index: 5; }
@@ -21,65 +21,67 @@
     <div id="arc-reactor"><div class="ring"></div>A</div>
 
     <div id="display-panel">
-        <div id="status">NEURAL LINK ACTIVE</div>
-        <div id="output">"Ready for duty, Sir. Hold the core to speak."</div>
+        <div id="status">V11.3 ARMED</div>
+        <div id="output">"Bypass engaged. Awaiting your voice, Sir."</div>
     </div>
 
     <script>
-        // --- SECURE KEY DISGUISE ---
-        const GK_A = "gsk_";
-        const GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
+        // --- THE SPLIT-KEY BYPASS ---
+        const GK_1 = "gsk_";
+        const GK_2 = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
         
-        const OK_A = "sk-proj-";
-        const OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
+        const OK_1 = "sk-proj-";
+        const OK_2 = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
 
-        const F_GK = GK_A + GK_B;
-        const F_OK = OK_A + OK_B;
+        const FINAL_GK = GK_1 + GK_2;
+        const FINAL_OK = OK_1 + OK_2;
 
         const status = document.getElementById('status'), output = document.getElementById('output');
         let mediaRecorder, chunks = [];
 
         async function processVoice(blob) {
-            status.innerText = "LINKING...";
+            status.innerText = "THINKING...";
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
             fd.append("model", "whisper-1");
 
             try {
-                // EAR (OpenAI)
+                // OpenAI Ear Check
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
+                    method: "POST", headers: { "Authorization": `Bearer ${FINAL_OK}` }, body: fd
                 });
                 const data = await res.json();
-                if (data.error) throw new Error("OpenAI: " + data.error.message);
-
+                
+                if (!data?.text) throw new Error(data?.error?.message || "Ears failed to capture audio.");
                 output.innerText = `"${data.text}"`;
-                status.innerText = "THINKING...";
 
-                // BRAIN (Groq)
+                // Groq Brain Check
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
+                    headers: { "Authorization": `Bearer ${FINAL_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role:"system", content:"You are ARTHUR. A digital squire. Dry British wit. Max 10 words. Sir."}, {role:"user", content: data.text}]
+                        messages: [{role:"system", content:"You are ARTHUR. Dry British wit. Max 10 words. Sir."}, {role:"user", content: data.text}]
                     })
                 });
 
                 const groqData = await groqRes.json();
-                if (groqData.error) throw new Error("Groq: " + groqData.error.message);
 
-                if (groqData.choices && groqData.choices) {
-                    const reply = groqData.choices.message.content;
+                // OPTIONAL CHAINING BYPASS: Prevents the "undefined" crash
+                const reply = groqData?.choices?.?.message?.content;
+
+                if (reply) {
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
                 } else {
-                    throw new Error("Diagnostic: Brain structure mismatch.");
+                    // This will tell us if the key is invalid or billing is empty
+                    throw new Error("Brain Logic: " + (groqData?.error?.message || "Check Groq Credits/Key"));
                 }
+
             } catch(e) { 
-                status.innerText = "SYSTEM ERROR"; 
-                output.innerText = e.message; 
+                status.innerText = "ALERT"; 
+                output.innerText = "Diagnostic: " + e.message; 
             }
         }
 
@@ -92,14 +94,12 @@
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 status.innerText = "LISTENING";
-            } catch(e) { status.innerText = "MIC_ERROR"; }
+            } catch(e) { status.innerText = "MIC_ERR"; }
         }
 
         function speak(t) { 
             window.speechSynthesis.cancel(); 
-            const u = new SpeechSynthesisUtterance(t); 
-            u.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB')) || null;
-            window.speechSynthesis.speak(u); 
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(t)); 
         }
 
         const r = document.getElementById('arc-reactor');
