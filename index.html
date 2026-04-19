@@ -3,11 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v11.1</title>
+    <title>ARTHUR v11.5 Stable</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
         body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
+        
+        /* Initialization Overlay */
+        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
+        #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 5px; cursor: pointer; box-shadow: 0 0 15px var(--glow); font-weight: bold; }
+
         #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; z-index: 5; }
         .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
         #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
@@ -18,15 +23,19 @@
 </head>
 <body>
 
+    <div id="init-screen">
+        <button id="init-btn">Initialize Arthur</button>
+        <p style="margin-top: 20px; font-size: 0.6rem; letter-spacing: 2px;">SECURE PROTOCOL v11.5</p>
+    </div>
+
     <div id="arc-reactor"><div class="ring"></div>A</div>
 
     <div id="display-panel">
-        <div id="status">NEURAL LINK ACTIVE</div>
-        <div id="output">"Ready for duty, Sir. Hold the core to speak."</div>
+        <div id="status">OFFLINE</div>
+        <div id="output">"System awaiting initialization, Sir."</div>
     </div>
 
     <script>
-        // --- SECURE KEY DISGUISE ---
         const GK_A = "gsk_";
         const GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
         const OK_A = "sk-proj-";
@@ -38,6 +47,22 @@
         const status = document.getElementById('status'), output = document.getElementById('output');
         let mediaRecorder, chunks = [];
 
+        // INITIALIZATION LOGIC
+        document.getElementById('init-btn').addEventListener('click', () => {
+            // Unlock Speech Engine
+            window.speechSynthesis.getVoices();
+            const unlock = new SpeechSynthesisUtterance("");
+            window.speechSynthesis.speak(unlock);
+            
+            // Hide screen and update UI
+            document.getElementById('init-screen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('init-screen').style.display = 'none';
+                status.innerText = "NEURAL LINK ACTIVE";
+                output.innerText = "Ready for duty, Sir. Hold the core to speak.";
+            }, 500);
+        });
+
         async function processVoice(blob) {
             status.innerText = "LINKING...";
             const fd = new FormData();
@@ -45,27 +70,26 @@
             fd.append("model", "whisper-1");
 
             try {
+                // EAR (OpenAI Whisper)
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_OK}` },
                     body: fd
                 });
                 const data = await res.json();
-                if (data.error) throw new Error("OpenAI: " + data.error.message);
-
+                if (data.error) throw new Error(data.error.message);
+                
                 output.innerText = `"${data.text}"`;
                 status.innerText = "THINKING...";
 
+                // BRAIN (Groq Llama 3)
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${F_GK}`,
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are ARTHUR. A digital squire. Dry British wit. Max 10 words. Sir."},
+                            {role: "system", content: "You are ARTHUR. Dry British wit. Max 10 words. Sir."},
                             {role: "user", content: data.text}
                         ]
                     })
@@ -74,20 +98,15 @@
                 const groqData = await groqRes.json();
 
                 if (groqData.choices && groqData.choices.length > 0) {
+                    // Reverted back to standard
                     const reply = groqData.choices[0].message.content;
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
-                } else if (groqData.error) {
-                    throw new Error("Groq: " + groqData.error.message);
-                } else {
-                    throw new Error("Diagnostic: Brain response empty.");
                 }
-
             } catch(e) {
                 status.innerText = "SYSTEM ERROR";
                 output.innerText = e.message;
-                console.error(e);
             }
         }
 
@@ -102,7 +121,6 @@
                 status.innerText = "LISTENING";
             } catch(e) {
                 status.innerText = "MIC_ERROR";
-                output.innerText = "Check microphone permissions, Sir.";
             }
         }
 
@@ -111,20 +129,15 @@
             const u = new SpeechSynthesisUtterance(t);
             const voices = window.speechSynthesis.getVoices();
             const britishVoice = voices.find(v => v.lang.includes('en-GB'));
+            // Reverted back to standard
             u.voice = britishVoice || voices[0];
-            
-            // Booster: Set volume and pitch explicitly
             u.volume = 1;
-            u.rate = 1;
             window.speechSynthesis.speak(u);
         }
 
         const r = document.getElementById('arc-reactor');
-
         r.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            // Critical: "Wake up" the speech engine on the first touch
-            if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
             startListening();
         }, {passive: false});
 
@@ -133,14 +146,6 @@
             if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
         }, {passive: false});
 
-        // Load voices as soon as the page is clicked/touched
-        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-        document.body.addEventListener('touchstart', () => {
-            window.speechSynthesis.getVoices();
-            // Silent utter to unlock audio on iOS
-            const unlock = new SpeechSynthesisUtterance("");
-            window.speechSynthesis.speak(unlock);
-        }, {once: true});
     </script>
 </body>
 </html>
