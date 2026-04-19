@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v8.3</title>
+    <title>ARTHUR v8.4</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
-        body { background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
+        body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
         #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; }
         .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
         #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
@@ -25,10 +25,8 @@
 
     <div id="config-panel">
         <h3 style="margin:0; color: #fff;">HUD INITIALIZATION</h3>
-        <label style="font-size:0.7rem">GROQ KEY (BRAIN):</label>
-        <input type="password" id="g-input" placeholder="gsk_...">
-        <label style="font-size:0.7rem">OPENAI KEY (EARS):</label>
-        <input type="password" id="o-input" placeholder="sk-...">
+        <input type="password" id="g-input" placeholder="Groq Key (gsk_...)">
+        <input type="password" id="o-input" placeholder="OpenAI Key (sk-...)">
         <button onclick="saveKeys()">ENGAGE NEURAL LINK</button>
     </div>
 
@@ -36,7 +34,7 @@
 
     <div id="display-panel">
         <div id="status">READY</div>
-        <div id="output">"System primed. Standing by, Sir."</div>
+        <div id="output">"Standing by, Sir."</div>
     </div>
 
     <script>
@@ -66,10 +64,7 @@
                     headers: { "Authorization": `Bearer ${ok}` },
                     body: fd
                 });
-                
                 const data = await res.json();
-                
-                // --- FIX: LOOKING FOR DATA.TEXT INSTEAD OF CHOICES ---
                 if (data.text) {
                     output.innerText = `"${data.text}"`;
                     think(data.text, gk);
@@ -87,29 +82,24 @@
             try {
                 const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: { 
-                        "Authorization": `Bearer ${gk}`, 
-                        "Content-Type": "application/json" 
-                    },
+                    headers: { "Authorization": `Bearer ${gk}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        model: "llama-3.1-8b-instant",
-                        messages: [
-                            {role:"system", content:"You are ARTHUR, a British AI. Formal, concise, dry wit. Max 12 words. Address as Sir."}, 
-                            {role:"user", content: text}
-                        ]
+                        model: "llama3-8b-8192", // Optimized stable model name
+                        messages: [{role:"system", content:"You are ARTHUR. Dry British wit. Max 12 words. Sir."}, {role:"user", content: text}]
                     })
                 });
                 
                 const data = await res.json();
                 
-                // --- FIX: PROPERLY NESTED GROQ PATH ---
-                if (data.choices && data.choices && data.choices.message) {
+                if (data.choices && data.choices) {
                     const reply = data.choices.message.content;
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
                 } else {
-                    throw new Error(data.error?.message || "Groq response malformed");
+                    // This will tell us EXACTLY what Groq is complaining about
+                    const errMsg = data.error?.message || JSON.stringify(data);
+                    throw new Error(errMsg);
                 }
             } catch(e) { 
                 status.innerText = "BRAIN_ERROR"; 
@@ -130,7 +120,7 @@
                 status.innerText = "LISTENING...";
             } catch(e) { 
                 status.innerText = "MIC_BLOCK"; 
-                output.innerText = "Sir, please enable mic in browser settings.";
+                output.innerText = "Enable mic permissions, Sir.";
             }
         }
 
@@ -139,19 +129,12 @@
             const u = new SpeechSynthesisUtterance(t); 
             const voices = window.speechSynthesis.getVoices();
             u.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
-            u.rate = 1.0;
-            u.pitch = 0.9;
             window.speechSynthesis.speak(u); 
         }
 
         const r = document.getElementById('arc-reactor');
         r.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
         r.addEventListener('touchend', () => { if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); });
-        
-        // Desk support
-        r.addEventListener('mousedown', startListening);
-        r.addEventListener('mouseup', () => { if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); });
-
         document.body.addEventListener('click', () => { window.speechSynthesis.getVoices(); }, {once: true});
     </script>
 </body>
