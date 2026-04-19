@@ -3,41 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v11.1</title>
+    <title>ARTHUR v11.2</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
-        body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
-        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; z-index: 5; }
-        .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
-        #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
+        
+        body { 
+            background: var(--bg); 
+            color: var(--glow); 
+            font-family: sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: space-around; 
+            height: 100vh; 
+            margin: 0; 
+            overflow: hidden; 
+            padding: 40px 0; 
+        }
+
+        /* --- BEGIN SCREEN OVERLAY --- */
+        #splash {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+
+        #begin-btn {
+            padding: 15px 40px;
+            background: transparent;
+            border: 1px solid var(--glow);
+            color: var(--glow);
+            font-size: 1rem;
+            letter-spacing: 4px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0,242,255,0.2);
+            border-radius: 4px;
+        }
+
+        /* --- CORE UI --- */
+        #arc-reactor { 
+            width: 160px; height: 160px; 
+            border: 2px solid var(--glow); border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); 
+            box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); 
+            cursor: pointer; position: relative; z-index: 5;
+            transition: transform 0.1s;
+        }
+
+        #arc-reactor * { pointer-events: none; }
+
+        .ring { 
+            position: absolute; width: 115%; height: 115%; 
+            border: 1px solid var(--glow); border-radius: 50%; 
+            border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; 
+        }
+
+        #display-panel { 
+            width: 85%; text-align: center; border-top: 1px solid var(--glow); 
+            padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); 
+        }
+
         #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px; color: var(--glow); }
         #output { font-size: 0.95rem; font-style: italic; color: #fff; word-wrap: break-word; }
+
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div id="arc-reactor"><div class="ring"></div>A</div>
+    <div id="splash">
+        <div style="margin-bottom: 30px; font-size: 0.8rem; letter-spacing: 5px;">ESTABLISHING LINK...</div>
+        <button id="begin-btn">INITIALIZE ARTHUR</button>
+    </div>
+
+    <div id="arc-reactor">
+        <div class="ring"></div>
+        A
+    </div>
 
     <div id="display-panel">
-        <div id="status">NEURAL LINK ACTIVE</div>
-        <div id="output">"Ready for duty, Sir. Hold the core to speak."</div>
+        <div id="status">OFFLINE</div>
+        <div id="output">"Standing by, Sir."</div>
     </div>
 
     <script>
-        // --- SECURE KEY DISGUISE ---
+        // --- KEYS ---
         const GK_A = "gsk_";
         const GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
-        
         const OK_A = "sk-proj-";
         const OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
-
-        const F_GK = GK_A + GK_B;
-        const F_OK = OK_A + OK_B;
+        const F_GK = GK_A + GK_B; const F_OK = OK_A + OK_B;
 
         const status = document.getElementById('status'), output = document.getElementById('output');
+        const reactor = document.getElementById('arc-reactor');
         let mediaRecorder, chunks = [];
+
+        // INITIALIZE SYSTEM
+        document.getElementById('begin-btn').onclick = async () => {
+            // Wake up audio context
+            window.speechSynthesis.getVoices();
+            try {
+                // Request Mic permission immediately
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(t => t.stop()); // Stop it immediately after permission granted
+                
+                document.getElementById('splash').style.opacity = '0';
+                setTimeout(() => document.getElementById('splash').remove(), 500);
+                
+                status.innerText = "NEURAL LINK ACTIVE";
+                output.innerText = "System ready. Hold the core to speak.";
+                speak("Systems online, Sir.");
+            } catch (e) {
+                alert("Microphone access is required for ARTHUR to function.");
+            }
+        };
 
         async function processVoice(blob) {
             status.innerText = "LINKING...";
@@ -46,32 +133,25 @@
             fd.append("model", "whisper-1");
 
             try {
-                // EAR (OpenAI)
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
                     method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
-                if (data.error) throw new Error("OpenAI: " + data.error.message);
+                if (data.error) throw new Error(data.error.message);
 
                 output.innerText = `"${data.text}"`;
                 status.innerText = "THINKING...";
 
-                // BRAIN (Groq)
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [
-                            {role:"system", content:"You are ARTHUR. A digital squire. Dry British wit. Max 10 words. Sir."}, 
-                            {role:"user", content: data.text}
-                        ]
+                        messages: [{role:"system", content:"You are ARTHUR. A digital squire. Dry British wit. Max 10 words. Sir."}, {role:"user", content: data.text}]
                     })
                 });
 
                 const groqData = await groqRes.json();
-
-                // OPTIONAL CHAINING FIX: Safely navigates the object even if it's missing pieces
                 const reply = groqData?.choices?.?.message?.content;
 
                 if (reply) {
@@ -79,15 +159,11 @@
                     speak(reply);
                     status.innerText = "READY";
                 } else {
-                    // This pulls the specific error message from Groq if the request fails
-                    const errMsg = groqData?.error?.message || "Diagnostic: Neural structure mismatch.";
-                    throw new Error(errMsg);
+                    throw new Error(groqData?.error?.message || "Brain mismatch.");
                 }
-
             } catch(e) { 
                 status.innerText = "SYSTEM ERROR"; 
                 output.innerText = e.message; 
-                console.error("ARTHUR Debug:", e);
             }
         }
 
@@ -97,16 +173,10 @@
                 mediaRecorder = new MediaRecorder(s);
                 chunks = [];
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(chunks, { type: 'audio/mp4' });
-                    processVoice(audioBlob);
-                };
+                mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 status.innerText = "LISTENING";
-            } catch(e) { 
-                status.innerText = "MIC_ERROR"; 
-                output.innerText = "Microphone access denied or unavailable.";
-            }
+            } catch(e) { status.innerText = "MIC_ERROR"; }
         }
 
         function speak(t) { 
@@ -117,23 +187,14 @@
             window.speechSynthesis.speak(u); 
         }
 
-        const r = document.getElementById('arc-reactor');
-        
-        r.addEventListener('touchstart', (e) => { 
-            e.preventDefault(); 
-            startListening(); 
-        }, {passive: false});
+        // Action Handlers
+        function onStart(e) { if(e.cancelable) e.preventDefault(); reactor.style.transform="scale(0.92)"; startListening(); }
+        function onEnd(e) { if(e.cancelable) e.preventDefault(); reactor.style.transform="scale(1)"; if(mediaRecorder?.state === "recording") mediaRecorder.stop(); }
 
-        r.addEventListener('touchend', (e) => { 
-            e.preventDefault(); 
-            if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); 
-        }, {passive: false});
-
-        // Initialize voice engine on first interaction
-        document.body.addEventListener('click', () => { 
-            window.speechSynthesis.getVoices(); 
-        }, {once: true});
-
+        reactor.addEventListener('touchstart', onStart, {passive: false});
+        reactor.addEventListener('touchend', onEnd, {passive: false});
+        reactor.addEventListener('mousedown', onStart);
+        reactor.addEventListener('mouseup', onEnd);
     </script>
 </body>
 </html>
