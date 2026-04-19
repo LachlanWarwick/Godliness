@@ -3,111 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v11.6 - Jamie Edition</title>
+    <title>ARTHUR v12.1 - Jarvis Protocol</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
         body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
         
-        /* Initialization Overlay */
         #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
         #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 5px; cursor: pointer; box-shadow: 0 0 15px var(--glow); font-weight: bold; }
 
         #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; z-index: 5; }
         .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
         #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
-        #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px; color: var(--glow); }
-        #output { font-size: 0.95rem; font-style: italic; color: #fff; word-wrap: break-word; }
+        #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; color: var(--glow); }
+        #output { font-size: 0.95rem; font-style: italic; color: #fff; margin-top: 10px; word-wrap: break-word; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
     <div id="init-screen">
-        <button id="init-btn">Initialize Arthur</button>
-        <p style="margin-top: 20px; font-size: 0.6rem; letter-spacing: 2px;">JAMIE LINK v11.6</p>
+        <button id="init-btn">Initialize Jarvis Protocol</button>
+        <p style="margin-top: 20px; font-size: 0.6rem; letter-spacing: 2px;">SECURE LINK ACTIVE</p>
     </div>
 
     <div id="arc-reactor"><div class="ring"></div>A</div>
 
     <div id="display-panel">
         <div id="status">OFFLINE</div>
-        <div id="output">"System awaiting initialization, Sir."</div>
+        <div id="output">"Awaiting initialization, Sir."</div>
     </div>
 
     <script>
         const GK_A = "gsk_", GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
         const OK_A = "sk-proj-", OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
-
         const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
         const status = document.getElementById('status'), output = document.getElementById('output');
         let mediaRecorder, chunks = [];
 
-        // --- INITIALIZATION LOGIC ---
+        // --- INITIALIZATION ---
         document.getElementById('init-btn').addEventListener('click', async () => {
             try {
-                // Request Mic Permission on Click
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                stream.getTracks().forEach(track => track.stop()); // Permission granted, release mic for now
-
-                // Audio Handshake
+                stream.getTracks().forEach(t => t.stop());
+                
+                // Warm up voices
                 window.speechSynthesis.getVoices();
-                const unlock = new SpeechSynthesisUtterance("");
-                window.speechSynthesis.speak(unlock);
-
-                // UI Transition
+                
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => {
                     document.getElementById('init-screen').style.display = 'none';
-                    status.innerText = "NEURAL LINK ACTIVE";
-                    output.innerText = "Ready for duty, Sir. Hold the core to speak.";
+                    status.innerText = "SYSTEM ONLINE";
+                    speak("Jarvis protocol active. Ready for instructions, Sir.");
                 }, 500);
-            } catch (err) {
-                alert("Microphone access is required for ARTHUR to function, Sir.");
-            }
+            } catch (err) { alert("Microphone access is required, Sir."); }
         });
 
         async function processVoice(blob) {
-            status.innerText = "LINKING...";
+            status.innerText = "ANALYZING...";
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
             fd.append("model", "whisper-1");
 
             try {
-                // EAR
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
                     method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
-                if (data.error) throw new Error(data.error.message);
-                
+                const text = data.text.toLowerCase();
                 output.innerText = `"${data.text}"`;
-                status.innerText = "THINKING...";
 
-                // BRAIN
+                // 1. COMMAND: OPEN APPS
+                if (text.includes("open ")) {
+                    const app = text.split("open ").replace(/[.?!]/g, "").trim();
+                    const links = { "spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "instagram": "instagram://", "maps": "maps://" };
+                    
+                    if (links[app]) {
+                        speak(`Opening ${app} now, Sir.`);
+                        setTimeout(() => { window.location.href = links[app]; }, 1000);
+                        return;
+                    } else {
+                        // Fallback to Shortcuts for any other app
+                        speak(`Launching ${app} via shortcut protocol, Sir.`);
+                        setTimeout(() => { window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(app)}`; }, 1000);
+                        return;
+                    }
+                }
+
+                // 2. COMMAND: BATTERY
+                if (text.includes("battery") || text.includes("power level")) {
+                    const bat = await navigator.getBattery();
+                    speak(`Power levels are at ${Math.round(bat.level * 100)} percent, Sir.`);
+                    return;
+                }
+
+                // 3. BRAIN: GROQ (Jarvis Personality)
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are ARTHUR. A digital squire. Dry British wit. Max 10 words. Sir."},
+                            {role: "system", content: "You are Arthur. Efficient, dry British wit. Extremely formal. Address the user as 'Sir'. Keep responses under 12 words, unless giving details the user wants.."},
                             {role: "user", content: data.text}
                         ]
                     })
                 });
 
                 const groqData = await groqRes.json();
-                if (groqData.choices && groqData.choices.length > 0) {
-                    const reply = groqData.choices[0].message.content;
-                    output.innerText = reply;
-                    speak(reply);
-                    status.innerText = "READY";
-                }
-            } catch(e) {
-                status.innerText = "SYSTEM ERROR";
-                output.innerText = e.message;
-            }
+                const reply = groqData.choices[0].message.content;
+                output.innerText = reply;
+                speak(reply);
+                status.innerText = "READY";
+
+            } catch(e) { status.innerText = "SYSTEM ERROR"; }
+        }
+
+        function speak(t) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(t);
+            const voices = window.speechSynthesis.getVoices();
+            
+            // Search for Jamie, then Daniel, then any British male
+            const jamie = voices.find(v => v.name.includes('Jamie'));
+            const daniel = voices.find(v => v.name.includes('Daniel'));
+            
+            u.voice = jamie || daniel || voices.find(v => v.lang.includes('en-GB')) || voices[0];
+            u.volume = 1;
+            u.rate = 0.95; // Jarvis-style calm pace
+            u.pitch = 0.9; // Jarvis-style lower resonance
+            window.speechSynthesis.speak(u);
         }
 
         async function startListening() {
@@ -118,35 +143,13 @@
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
-                status.innerText = "LISTENING";
+                status.innerText = "LISTENING...";
             } catch(e) { status.innerText = "MIC_ERROR"; }
         }
 
-        function speak(t) {
-            window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(t);
-            const voices = window.speechSynthesis.getVoices();
-            
-            // SEARCH FOR JAMIE
-            const jamie = voices.find(v => v.name.includes('Jamie'));
-            
-            u.voice = jamie || voices[0];
-            u.volume = 1;
-            u.rate = 1;
-            window.speechSynthesis.speak(u);
-        }
-
         const r = document.getElementById('arc-reactor');
-        r.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            startListening();
-        }, {passive: false});
-
-        r.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
-        }, {passive: false});
-
+        r.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
+        r.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
     </script>
 </body>
 </html>
