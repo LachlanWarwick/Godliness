@@ -58,14 +58,30 @@
                 status.innerText = "THINKING...";
 
                 // 2. INTELLIGENCE (Groq)
-                const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${FINAL_GK}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        model: "llama-3.3-70b-versatile",
-                        messages: [{role:"system", content:"You are ARTHUR. Dry British wit. Max 12 words. Sir."}, {role:"user", content: data.text}]
-                    })
-                });
+                // 2. INTELLIGENCE (Groq)
+const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${FINAL_GK}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{role:"system", content:"You are ARTHUR. Dry British wit. Max 12 words. Sir."}, {role:"user", content: data.text}]
+    })
+});
+
+const groqData = await groqRes.json();
+
+// --- NEW DEEP DEBUG LOGIC ---
+if (groqData.choices && groqData.choices) {
+    const reply = groqData.choices.message.content;
+    output.innerText = reply;
+    speak(reply);
+    status.innerText = "READY";
+} else {
+    // THIS WILL SHOW YOU THE ACTUAL RAW PROBLEM
+    const rawData = JSON.stringify(groqData);
+    throw new Error("RAW DATA: " + rawData.substring(0, 100));
+}
+
 
                 const groqData = await groqRes.json();
 
