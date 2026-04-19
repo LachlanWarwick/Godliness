@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v12.9 - Strict Protocol</title>
+    <title>ARTHUR v13.0</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
@@ -41,7 +41,7 @@
 
     <div id="display-panel">
         <div id="status">OFFLINE</div>
-        <div id="output">"Awaiting initialization, Sir."</div>
+        <div id="output">"Awaiting instructions, Sir."</div>
     </div>
 
     <script>
@@ -57,17 +57,15 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
                 
-                // Force load voices
+                // Wake up speech engine
                 window.speechSynthesis.getVoices();
                 
-                const hour = new Date().getHours();
-                const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-                speak(`${greet}, Sir. The ARTHUR protocol is online. How may I be of service?`);
+                speak("The ARTHUR protocol is online, Sir. I am using the default audio channel.");
                 
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => { 
                     document.getElementById('init-screen').style.display = 'none'; 
-                    status.innerText = "ARTHUR ACTIVE";
+                    status.innerText = "LINK ACTIVE";
                 }, 800);
             } catch (e) { alert("Microphone access is mandatory, Sir."); }
         });
@@ -99,24 +97,28 @@
                 }
 
                 if (targetApp) {
-                    speak(`Very well, Sir. Accessing the ${targetApp} interface.`);
+                    status.innerText = "EXECUTING...";
+                    speak(`Very well, Sir. Accessing ${targetApp}.`);
                     setTimeout(() => { 
                         const urls = {"spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "instagram": "instagram://"};
                         window.location.href = urls[targetApp] || `shortcuts://run-shortcut?name=${encodeURIComponent(targetApp)}`;
-                    }, 1500);
+                        setTimeout(() => { status.innerText = "READY"; }, 2000);
+                    }, 1200);
                     return;
                 }
 
                 // --- UTILITY ---
-                if (text.includes("battery") || text.includes("power")) {
-                    const bat = await navigator.getBattery();
-                    speak(`The power cells are currently at ${Math.round(bat.level * 100)} percent, Sir.`);
+                if (text.includes("time")) {
+                    const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    speak(`The time is precisely ${time}, Sir.`);
+                    status.innerText = "READY";
                     return;
                 }
 
-                if (text.includes("time")) {
-                    const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    speak(`The current time is ${time}, Sir.`);
+                if (text.includes("battery")) {
+                    const bat = await navigator.getBattery();
+                    speak(`Power cells at ${Math.round(bat.level * 100)} percent, Sir.`);
+                    status.innerText = "READY";
                     return;
                 }
 
@@ -127,7 +129,7 @@
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are ARTHUR, a verbose and loyal British AI butler. Address the user as 'Sir'. Max 25 words."},
+                            {role: "system", content: "You are ARTHUR, a loyal British AI butler. Address user as Sir. Max 25 words."},
                             {role: "user", content: data.text}
                         ]
                     })
@@ -146,22 +148,14 @@
 
         function speak(t) {
             window.speechSynthesis.cancel();
-            // Force resume in case the browser paused audio
-            if (window.speechSynthesis.paused) {
-                window.speechSynthesis.resume();
-            }
-
             const u = new SpeechSynthesisUtterance(t);
             const voices = window.speechSynthesis.getVoices();
             
-            // Priority: Jamie -> Daniel -> Any UK English -> Any English -> First Available
-            const v = voices.find(v => v.name.includes('Jamie')) || 
-                      voices.find(v => v.name.includes('Daniel')) || 
-                      voices.find(v => v.lang.includes('en-GB')) || 
-                      voices.find(v => v.lang.includes('en')) || 
-                      voices[0];
+            // USE ANY VOICE - Grab the first one available
+            if (voices.length > 0) {
+                u.voice = voices[0];
+            }
             
-            u.voice = v;
             u.volume = 1.0;
             u.rate = 0.9;
             
