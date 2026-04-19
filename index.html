@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v11.5 Stable</title>
+    <title>ARTHUR v11.6 - Jamie Edition</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
@@ -25,7 +25,7 @@
 
     <div id="init-screen">
         <button id="init-btn">Initialize Arthur</button>
-        <p style="margin-top: 20px; font-size: 0.6rem; letter-spacing: 2px;">SECURE PROTOCOL v11.5</p>
+        <p style="margin-top: 20px; font-size: 0.6rem; letter-spacing: 2px;">JAMIE LINK v11.6</p>
     </div>
 
     <div id="arc-reactor"><div class="ring"></div>A</div>
@@ -36,31 +36,35 @@
     </div>
 
     <script>
-        const GK_A = "gsk_";
-        const GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
-        const OK_A = "sk-proj-";
-        const OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
+        const GK_A = "gsk_", GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
+        const OK_A = "sk-proj-", OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
 
-        const F_GK = GK_A + GK_B;
-        const F_OK = OK_A + OK_B;
-
+        const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
         const status = document.getElementById('status'), output = document.getElementById('output');
         let mediaRecorder, chunks = [];
 
-        // INITIALIZATION LOGIC
-        document.getElementById('init-btn').addEventListener('click', () => {
-            // Unlock Speech Engine
-            window.speechSynthesis.getVoices();
-            const unlock = new SpeechSynthesisUtterance("");
-            window.speechSynthesis.speak(unlock);
-            
-            // Hide screen and update UI
-            document.getElementById('init-screen').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('init-screen').style.display = 'none';
-                status.innerText = "NEURAL LINK ACTIVE";
-                output.innerText = "Ready for duty, Sir. Hold the core to speak.";
-            }, 500);
+        // --- INITIALIZATION LOGIC ---
+        document.getElementById('init-btn').addEventListener('click', async () => {
+            try {
+                // Request Mic Permission on Click
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop()); // Permission granted, release mic for now
+
+                // Audio Handshake
+                window.speechSynthesis.getVoices();
+                const unlock = new SpeechSynthesisUtterance("");
+                window.speechSynthesis.speak(unlock);
+
+                // UI Transition
+                document.getElementById('init-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('init-screen').style.display = 'none';
+                    status.innerText = "NEURAL LINK ACTIVE";
+                    output.innerText = "Ready for duty, Sir. Hold the core to speak.";
+                }, 500);
+            } catch (err) {
+                alert("Microphone access is required for ARTHUR to function, Sir.");
+            }
         });
 
         async function processVoice(blob) {
@@ -70,11 +74,9 @@
             fd.append("model", "whisper-1");
 
             try {
-                // EAR (OpenAI Whisper)
+                // EAR
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${F_OK}` },
-                    body: fd
+                    method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
                 if (data.error) throw new Error(data.error.message);
@@ -82,23 +84,21 @@
                 output.innerText = `"${data.text}"`;
                 status.innerText = "THINKING...";
 
-                // BRAIN (Groq Llama 3)
+                // BRAIN
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are ARTHUR. Dry British wit. Max 10 words. Sir."},
+                            {role: "system", content: "You are ARTHUR. A digital squire. Dry British wit. Max 10 words. Sir."},
                             {role: "user", content: data.text}
                         ]
                     })
                 });
 
                 const groqData = await groqRes.json();
-
                 if (groqData.choices && groqData.choices.length > 0) {
-                    // Reverted back to standard
                     const reply = groqData.choices[0].message.content;
                     output.innerText = reply;
                     speak(reply);
@@ -119,19 +119,20 @@
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 status.innerText = "LISTENING";
-            } catch(e) {
-                status.innerText = "MIC_ERROR";
-            }
+            } catch(e) { status.innerText = "MIC_ERROR"; }
         }
 
         function speak(t) {
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(t);
             const voices = window.speechSynthesis.getVoices();
-            const britishVoice = voices.find(v => v.lang.includes('en-GB'));
-            // Reverted back to standard
-            u.voice = britishVoice || voices[0];
+            
+            // SEARCH FOR JAMIE
+            const jamie = voices.find(v => v.name.includes('Jamie'));
+            
+            u.voice = jamie || voices[0];
             u.volume = 1;
+            u.rate = 1;
             window.speechSynthesis.speak(u);
         }
 
