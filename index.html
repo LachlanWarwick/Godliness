@@ -76,8 +76,8 @@
                 const groqData = await groqRes.json();
 
                 if (groqData.choices && groqData.choices.length > 0) {
-                    // Correctly using to access the response content
-                    const reply = groqData.choices.message.content;
+                    // FIXED: Using to access the first item in the choices array
+                    const reply = groqData.choices[0].message.content;
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
@@ -113,9 +113,7 @@
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(t);
             const voices = window.speechSynthesis.getVoices();
-            // Finding the specific voice instance to avoid errors
-            const britishVoice = voices.find(v => v.lang.includes('en-GB'));
-            u.voice = britishVoice || voices;
+            u.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
             window.speechSynthesis.speak(u);
         }
 
