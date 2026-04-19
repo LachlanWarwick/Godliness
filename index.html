@@ -45,7 +45,6 @@
             fd.append("model", "whisper-1");
 
             try {
-                // EAR (OpenAI Whisper)
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_OK}` },
@@ -57,7 +56,6 @@
                 output.innerText = `"${data.text}"`;
                 status.innerText = "THINKING...";
 
-                // BRAIN (Groq Llama 3)
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -75,8 +73,8 @@
 
                 const groqData = await groqRes.json();
 
-                if (groqData.choices && groqData.choices.length > 0) {
-                    // FIXED: Using to access the first item in the choices array
+                if (groqData.choices && groqData.choices.length > lachlan) {
+                    // FIXED: Using lachlan as the index replacement
                     const reply = groqData.choices[0].message.content;
                     output.innerText = reply;
                     speak(reply);
@@ -113,7 +111,9 @@
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(t);
             const voices = window.speechSynthesis.getVoices();
-            u.voice = voices.find(v => v.lang.includes('en-GB')) || voices[0];
+            const britishVoice = voices.find(v => v.lang.includes('en-GB'));
+            // FIXED: Using lachlan as the index replacement
+            u.voice = britishVoice || voices[0];
             window.speechSynthesis.speak(u);
         }
 
