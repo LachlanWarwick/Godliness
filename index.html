@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v12.7 - Alfred Protocol</title>
+    <title>ARTHUR v12.9 - Strict Protocol</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
@@ -30,7 +30,7 @@
 <body>
 
     <div id="init-screen">
-        <button id="init-btn">Initialize Alfred Protocol</button>
+        <button id="init-btn">Initialize ARTHUR Protocol</button>
     </div>
 
     <div id="arc-reactor">
@@ -41,7 +41,7 @@
 
     <div id="display-panel">
         <div id="status">OFFLINE</div>
-        <div id="output">"Standing by for your instructions, Sir."</div>
+        <div id="output">"Awaiting initialization, Sir."</div>
     </div>
 
     <script>
@@ -56,22 +56,24 @@
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
+                
+                // Force load voices
                 window.speechSynthesis.getVoices();
                 
                 const hour = new Date().getHours();
                 const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-                speak(`${greet}, Sir. I have taken the liberty of stabilizing the neural link. I am ready when you are.`);
+                speak(`${greet}, Sir. The ARTHUR protocol is online. How may I be of service?`);
                 
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => { 
                     document.getElementById('init-screen').style.display = 'none'; 
-                    status.innerText = "NEURAL LINK ACTIVE";
+                    status.innerText = "ARTHUR ACTIVE";
                 }, 800);
-            } catch (e) { alert("Permission is required for my operation, Sir."); }
+            } catch (e) { alert("Microphone access is mandatory, Sir."); }
         });
 
         async function processVoice(blob) {
-            status.innerText = "ANALYZING INTENT...";
+            status.innerText = "PROCESSING...";
             reactor.classList.remove('listening');
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
@@ -85,25 +87,19 @@
                 const text = data.text.toLowerCase().trim().replace(/[.?!]/g, "");
                 output.innerText = `"${data.text}"`;
 
-                // --- INTUITIVE APP LAUNCHING ---
-                const knownApps = ["spotify", "youtube", "whatsapp", "instagram", "facebook", "maps", "netflix", "shortcuts", "safari"];
-                const launchKeywords = ["open", "launch", "run", "start", "interface with"];
-                
+                // --- STRICT APP LAUNCHING (Keywords ONLY) ---
+                const launchKeywords = ["open", "launch", "run", "start"];
                 let targetApp = null;
 
                 for (let kw of launchKeywords) {
                     if (text.startsWith(kw + " ")) {
-                        targetApp = text.split(kw + " ");
+                        targetApp = text.split(kw + " ").trim();
                         break;
                     }
                 }
 
-                if (!targetApp && (knownApps.includes(text) || (text.length < 15 && text.split(" ").length === 1))) {
-                    targetApp = text; 
-                }
-
                 if (targetApp) {
-                    speak(`As you wish, Sir. Initializing the ${targetApp} interface immediately.`);
+                    speak(`Very well, Sir. Accessing the ${targetApp} interface.`);
                     setTimeout(() => { 
                         const urls = {"spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "instagram": "instagram://"};
                         window.location.href = urls[targetApp] || `shortcuts://run-shortcut?name=${encodeURIComponent(targetApp)}`;
@@ -111,40 +107,27 @@
                     return;
                 }
 
-                // --- WEATHER PROTOCOL ---
-                if (text.includes("weather") || text.includes("temperature") || text.includes("outside")) {
-                    status.innerText = "CONSULTING SATELLITES...";
-                    navigator.geolocation.getCurrentPosition(async (pos) => {
-                        const { latitude, longitude } = pos.coords;
-                        const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
-                        const wData = await wRes.json();
-                        const temp = Math.round(wData.current_weather.temperature);
-                        speak(`I have consulted the local meteorological stations, Sir. It is currently ${temp} degrees Celsius. Do dress accordingly.`);
-                    }, () => speak("I'm afraid I cannot access your current coordinates to check the weather, Sir."));
-                    return;
-                }
-
-                // --- UTILITY COMMANDS ---
+                // --- UTILITY ---
                 if (text.includes("battery") || text.includes("power")) {
                     const bat = await navigator.getBattery();
-                    speak(`I have conducted a brief scan of the power cells, Sir. We are currently operating at ${Math.round(bat.level * 100)} percent capacity.`);
+                    speak(`The power cells are currently at ${Math.round(bat.level * 100)} percent, Sir.`);
                     return;
                 }
 
                 if (text.includes("time")) {
                     const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    speak(`It is currently ${time}, Sir. Do let me know if you require a more precise chronometric reading.`);
+                    speak(`The current time is ${time}, Sir.`);
                     return;
                 }
 
-                // --- ALFRED BRAIN ---
+                // --- BRAIN ---
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are ARTHUR, a loyal and highly verbose British AI butler. You are protective, elegant, and sophisticated. Address the user as 'Sir'. Use complex, polite vocabulary. Max 25 words."},
+                            {role: "system", content: "You are ARTHUR, a verbose and loyal British AI butler. Address the user as 'Sir'. Max 25 words."},
                             {role: "user", content: data.text}
                         ]
                     })
@@ -155,22 +138,36 @@
                 output.innerText = reply;
                 speak(reply);
                 status.innerText = "READY";
-            } catch(e) { status.innerText = "SYSTEM ERROR"; }
+            } catch(e) { 
+                status.innerText = "ERROR"; 
+                console.error(e);
+            }
         }
 
         function speak(t) {
             window.speechSynthesis.cancel();
+            // Force resume in case the browser paused audio
+            if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+            }
+
             const u = new SpeechSynthesisUtterance(t);
             const voices = window.speechSynthesis.getVoices();
-            const jamie = voices.find(v => v.name.includes('Jamie'));
-            const daniel = voices.find(v => v.name.includes('Daniel'));
             
-            u.voice = jamie || daniel || voices.find(v => v.lang.includes('en-GB')) || voices[0];
+            // Priority: Jamie -> Daniel -> Any UK English -> Any English -> First Available
+            const v = voices.find(v => v.name.includes('Jamie')) || 
+                      voices.find(v => v.name.includes('Daniel')) || 
+                      voices.find(v => v.lang.includes('en-GB')) || 
+                      voices.find(v => v.lang.includes('en')) || 
+                      voices[0];
+            
+            u.voice = v;
             u.volume = 1.0;
             u.rate = 0.9;
             
             u.onstart = () => reactor.classList.add('active');
             u.onend = () => reactor.classList.remove('active');
+            
             window.speechSynthesis.speak(u);
         }
 
