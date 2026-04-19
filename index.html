@@ -113,7 +113,7 @@
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(t);
             const voices = window.speechSynthesis.getVoices();
-            u.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
+            u.voice = voices.find(v => v.lang.includes('en-GB')) || voices[0];
             window.speechSynthesis.speak(u);
         }
 
