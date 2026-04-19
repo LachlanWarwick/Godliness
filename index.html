@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>ARTHUR PROJECT: v7.2</title>
+    <title>ARTHUR PROJECT: v7.3</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); color: var(--glow); font-family: 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
         
         /* HUD Visuals */
-        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 4rem; text-shadow: 0 0 15px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; transition: 0.2s; }
+        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 4rem; text-shadow: 0 0 15px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; transition: 0.2s; z-index: 5; }
         #arc-reactor:active { transform: scale(0.92); box-shadow: inset 0 0 40px var(--glow), 0 0 30px var(--glow); }
         .ring { position: absolute; width: 110%; height: 110%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 2s linear infinite; opacity: 0.4; }
 
@@ -21,9 +21,9 @@
 
         /* Secure Vault */
         #vault-icon { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; opacity: 0.4; cursor: pointer; z-index: 10; }
-        #config-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #001520; border: 2px solid var(--glow); padding: 30px; border-radius: 15px; width: 85%; z-index: 100; box-shadow: 0 0 50px #000; }
-        input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 15px 0; padding: 12px; font-family: monospace; }
-        #save-btn { background: var(--glow); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; letter-spacing: 1px; }
+        #config-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #001520; border: 2px solid var(--glow); padding: 30px; border-radius: 15px; width: 85%; z-index: 100; box-shadow: 0 0 100px #000; }
+        input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 15px 0; padding: 12px; font-family: monospace; border-radius: 5px; }
+        #save-btn { background: var(--glow); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; letter-spacing: 1px; border-radius: 5px; }
 
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
@@ -33,11 +33,12 @@
     <div id="vault-icon" onclick="toggleVault()">⚙️</div>
 
     <div id="config-panel">
-        <h3 style="margin-top:0">CRYPTO VAULT</h3>
-        <label style="font-size: 0.8rem">GROQ CLOUD KEY:</label>
-        <input type="password" id="groq-input" placeholder="gsk_...">
-        <label style="font-size: 0.8rem">OPENAI WHISPER KEY:</label>
-        <input type="password" id="openai-input" placeholder="sk-...">
+        <h3 style="margin-top:0; color: #fff;">SECURE CRYPTO VAULT</h3>
+        <p style="font-size: 0.7rem; opacity: 0.8;">Keys are stored locally on your device. GitHub cannot see them.</p>
+        <label style="font-size: 0.8rem">GROQ CLOUD KEY (gsk_...):</label>
+        <input type="password" id="groq-input" placeholder="Paste Groq Key">
+        <label style="font-size: 0.8rem">OPENAI WHISPER KEY (sk-...):</label>
+        <input type="password" id="openai-input" placeholder="Paste OpenAI Key">
         <button id="save-btn" onclick="saveKeys()">INITIALIZE NEURAL LINK</button>
     </div>
 
@@ -47,11 +48,11 @@
     </div>
 
     <div id="display-panel">
-        <div id="status">NEURAL_LINK_OFFLINE</div>
-        <div id="output">"Sir, please tap the gear icon to provide API credentials."</div>
+        <div id="status">NEURAL_LINK_LOCKED</div>
+        <div id="output">"Sir, please initialize the vault to engage the HUD."</div>
     </div>
 
-    <div id="status-footer" style="font-size: 0.6rem; opacity: 0.5;">PROJECT ARTHUR // VER 7.2</div>
+    <div style="font-size: 0.6rem; opacity: 0.5; letter-spacing: 2px;">TACTICAL OS // VER 7.3</div>
 
     <script>
         const status = document.getElementById('status');
@@ -69,59 +70,46 @@
             localStorage.setItem('openai_key', document.getElementById('openai-input').value.trim());
             toggleVault();
             status.innerText = "NEURAL_LINK: STANDBY";
-            output.innerText = "Credentials accepted, Sir. Ready for command.";
+            output.innerText = "Neural link synced. Welcome back, Sir.";
         }
 
-        async function startListening() {
-            const gKey = localStorage.getItem('groq_key');
-            const oKey = localStorage.getItem('openai_key');
-            
-            if(!gKey || !oKey) {
-                toggleVault();
-                return;
-            }
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.start();
-                status.innerText = "LISTENING...";
-                audioChunks = [];
-
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                mediaRecorder.onstop = async () => {
-                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
-                    processVoice(blob, oKey, gKey);
-                };
-            } catch(e) {
-                status.innerText = "HARDWARE_ERROR";
-                output.innerText = "Microphone access denied, Sir.";
-            }
-        }
-
+        // --- THE EAR FIX: WHISPER API ---
         async function processVoice(blob, oKey, gKey) {
-            status.innerText = "TRANSCRIBING...";
+            status.innerText = "UPLOADING TO EARS...";
+            
+            // Format check: Fixes the 'Notes App' dash/hyphen error
+            const cleanOKey = oKey.replace(/[\u2013\u2014]/g, "-");
+            const cleanGKey = gKey.replace(/[\u2013\u2014]/g, "-");
+
             const formData = new FormData();
             formData.append("file", blob, "audio.webm");
             formData.append("model", "whisper-1");
 
             try {
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    headers: { "Authorization": `Bearer ${oKey}` },
+                    headers: { "Authorization": `Bearer ${cleanOKey}` },
                     method: "POST",
                     body: formData
                 });
-                if(!res.ok) throw new Error("Whisper Link Failed");
+
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(`Code ${res.status}: ${errorData.error.message}`);
+                }
+
                 const data = await res.json();
-                think(data.text, gKey);
+                if (!data.text) throw new Error("Audio was silent or unreadable.");
+                
+                think(data.text, cleanGKey);
             } catch(e) {
                 status.innerText = "EARS_ERROR";
-                output.innerText = "Whisper API rejected the link.";
+                output.innerText = "Diagnostic: " + e.message;
             }
         }
 
+        // --- THE BRAIN FIX: GROQ API ---
         async function think(text, gKey) {
-            status.innerText = "THINKING...";
+            status.innerText = "ARTHUR THINKING...";
             try {
                 const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     headers: { 
@@ -139,8 +127,8 @@
                 });
 
                 if (!res.ok) {
-                    const errorInfo = await res.json();
-                    throw new Error(`Code ${res.status}: ${errorInfo.error.message}`);
+                    const errorData = await res.json();
+                    throw new Error(`Code ${res.status}: ${errorData.error.message}`);
                 }
 
                 const data = await res.json();
@@ -154,12 +142,35 @@
             }
         }
 
+        async function startListening() {
+            const gKey = localStorage.getItem('groq_key');
+            const oKey = localStorage.getItem('openai_key');
+            if(!gKey || !oKey) { toggleVault(); return; }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.start();
+                status.innerText = "LISTENING...";
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    processVoice(blob, oKey, gKey);
+                };
+            } catch(e) {
+                status.innerText = "MIC_BLOCK";
+                output.innerText = "Please enable microphone permissions in Safari.";
+            }
+        }
+
         function speak(text) {
             window.speechSynthesis.cancel();
             const utter = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
             utter.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
-            utter.pitch = 0.9;
+            utter.pitch = 0.95;
             window.speechSynthesis.speak(utter);
         }
 
@@ -167,11 +178,11 @@
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
         reactor.addEventListener('touchend', () => { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
         
-        // For Desktop testing
+        // Desk Testing
         reactor.addEventListener('mousedown', startListening);
         reactor.addEventListener('mouseup', () => { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
 
-        // Wake up audio
+        // Initialize iOS Voice
         document.body.addEventListener('click', () => { window.speechSynthesis.getVoices(); }, {once: true});
     </script>
 </body>
