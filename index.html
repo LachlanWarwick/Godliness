@@ -3,16 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v11.3</title>
+    <title>ARTHUR v11.4</title>
     <style>
-        :root { --glow: #00f2ff; --bg: #050000; } /* Dark red tint proves it's new code */
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
-        body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
-        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; z-index: 5; }
-        .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
-        #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
-        #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px; color: var(--glow); }
-        #output { font-size: 0.95rem; font-style: italic; color: #fff; word-wrap: break-word; }
+        :root { --glow: #00f2ff; --bg: #050000; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: none; }
+        body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; }
+        #arc-reactor { 
+            width: 180px; height: 180px; 
+            border: 4px solid var(--glow); border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 4rem; text-shadow: 0 0 10px var(--glow); 
+            box-shadow: inset 0 0 30px var(--glow), 0 0 20px var(--glow); 
+            cursor: pointer; position: relative; z-index: 10;
+        }
+        .ring { position: absolute; width: 110%; height: 110%; border: 2px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.4; pointer-events: none; }
+        #display-panel { width: 90%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 160px; }
+        #status { font-size: 0.8rem; letter-spacing: 4px; font-weight: bold; margin-bottom: 10px; color: var(--glow); }
+        #output { font-size: 1.1rem; font-style: italic; color: #fff; word-wrap: break-word; line-height: 1.4; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -21,22 +28,20 @@
     <div id="arc-reactor"><div class="ring"></div>A</div>
 
     <div id="display-panel">
-        <div id="status">V11.3 ARMED</div>
-        <div id="output">"Bypass engaged. Awaiting your voice, Sir."</div>
+        <div id="status">V11.4 READY</div>
+        <div id="output">"Force touch protocols engaged. Tap or hold the A, Sir."</div>
     </div>
 
     <script>
-        // --- THE SPLIT-KEY BYPASS ---
         const GK_1 = "gsk_";
         const GK_2 = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
-        
         const OK_1 = "sk-proj-";
         const OK_2 = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
 
-        const FINAL_GK = GK_1 + GK_2;
-        const FINAL_OK = OK_1 + OK_2;
+        const F_GK = GK_1 + GK_2;
+        const F_OK = OK_1 + OK_2;
 
-        const status = document.getElementById('status'), output = document.getElementById('output');
+        const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor');
         let mediaRecorder, chunks = [];
 
         async function processVoice(blob) {
@@ -46,28 +51,23 @@
             fd.append("model", "whisper-1");
 
             try {
-                // OpenAI Ear Check
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST", headers: { "Authorization": `Bearer ${FINAL_OK}` }, body: fd
+                    method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
-                
-                if (!data?.text) throw new Error(data?.error?.message || "Ears failed to capture audio.");
+                if (!data?.text) throw new Error(data?.error?.message || "Speech not recognized.");
                 output.innerText = `"${data.text}"`;
 
-                // Groq Brain Check
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: { "Authorization": `Bearer ${FINAL_GK}`, "Content-Type": "application/json" },
+                    headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role:"system", content:"You are ARTHUR. Dry British wit. Max 10 words. Sir."}, {role:"user", content: data.text}]
+                        messages: [{role:"system", content:"You are ARTHUR. Dry wit. Max 10 words. Sir."}, {role:"user", content: data.text}]
                     })
                 });
 
                 const groqData = await groqRes.json();
-
-                // OPTIONAL CHAINING BYPASS: Prevents the "undefined" crash
                 const reply = groqData?.choices?.?.message?.content;
 
                 if (reply) {
@@ -75,10 +75,8 @@
                     speak(reply);
                     status.innerText = "READY";
                 } else {
-                    // This will tell us if the key is invalid or billing is empty
-                    throw new Error("Brain Logic: " + (groqData?.error?.message || "Check Groq Credits/Key"));
+                    throw new Error("Brain: " + (groqData?.error?.message || "Invalid response."));
                 }
-
             } catch(e) { 
                 status.innerText = "ALERT"; 
                 output.innerText = "Diagnostic: " + e.message; 
@@ -94,7 +92,15 @@
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 status.innerText = "LISTENING";
-            } catch(e) { status.innerText = "MIC_ERR"; }
+                reactor.style.boxShadow = "inset 0 0 50px var(--glow), 0 0 40px var(--glow)";
+            } catch(e) { status.innerText = "MIC_ERR"; output.innerText = "Allow Microphone Access."; }
+        }
+
+        function stopListening() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                reactor.style.boxShadow = "inset 0 0 30px var(--glow), 0 0 20px var(--glow)";
+            }
         }
 
         function speak(t) { 
@@ -102,10 +108,13 @@
             window.speechSynthesis.speak(new SpeechSynthesisUtterance(t)); 
         }
 
-        const r = document.getElementById('arc-reactor');
-        r.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); }, {passive: false});
-        r.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder) mediaRecorder.stop(); }, {passive: false});
-        document.body.addEventListener('click', () => { window.speechSynthesis.getVoices(); }, {once: true});
+        // UNIVERSAL INPUT HANDLERS
+        reactor.addEventListener('pointerdown', (e) => { e.preventDefault(); startListening(); });
+        reactor.addEventListener('pointerup', (e) => { e.preventDefault(); stopListening(); });
+        reactor.addEventListener('pointerleave', (e) => { e.preventDefault(); stopListening(); });
+        
+        // Final wake-up for iOS audio
+        document.body.addEventListener('touchstart', () => { window.speechSynthesis.getVoices(); }, {once: true});
     </script>
 </body>
 </html>
