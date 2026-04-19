@@ -2,129 +2,94 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARTHUR v12.2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARTHUR v12.3</title>
     <style>
-        body { 
-            background: #050000; color: #00f2ff; 
-            font-family: sans-serif; margin: 0; 
-            display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; 
-            height: 100vh; overflow: hidden;
-        }
+        body { background: #000b14; color: #00f2ff; font-family: sans-serif; text-align: center; padding-top: 50px; }
         #arc-reactor { 
             width: 180px; height: 180px; 
-            border: 4px solid #00f2ff; border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; 
-            font-size: 5rem; font-weight: bold;
-            transition: all 0.15s ease;
-            box-shadow: none;
-            touch-action: none;
-            -webkit-user-select: none;
+            border: 5px solid #00f2ff; border-radius: 50%; 
+            background: none; color: #00f2ff; font-size: 4rem;
+            cursor: pointer;
         }
-        #display-panel { margin-top: 40px; text-align: center; width: 85%; }
-        #status { font-size: 0.7rem; letter-spacing: 3px; margin-bottom: 10px; text-transform: uppercase; }
-        #output { font-size: 1rem; color: #fff; font-style: italic; min-height: 60px; }
+        #arc-reactor:active { background: rgba(0, 242, 255, 0.2); }
+        #output { margin-top: 30px; color: white; padding: 20px; font-style: italic; }
     </style>
 </head>
-<body oncontextmenu="return false;">
+<body>
 
-    <div id="arc-reactor">A</div>
-
-    <div id="display-panel">
-        <div id="status">CORE SECURED</div>
-        <div id="output">"Bypass active. Standing by, Sir."</div>
-    </div>
+    <button id="arc-reactor">A</button>
+    <div id="status">UNLOCKED MODE</div>
+    <div id="output">"Tap and hold the A, Sir."</div>
 
     <script>
-        // --- SPLIT-KEY BYPASS SYSTEM ---
         const GK_A = "gsk_";
         const GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
-
         const OK_A = "sk-proj-";
         const OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
 
         const F_GK = GK_A + GK_B;
         const F_OK = OK_A + OK_B;
 
-        const reactor = document.getElementById('arc-reactor');
-        const status = document.getElementById('status');
+        const btn = document.getElementById('arc-reactor');
         const output = document.getElementById('output');
-        
+        const status = document.getElementById('status');
+
         let mediaRecorder, chunks = [];
 
-        async function processVoice(blob) {
-            status.innerText = "Analyzing...";
-            const fd = new FormData();
-            fd.append("file", blob, "audio.m4a");
-            fd.append("model", "whisper-1");
-
-            try {
-                // OpenAI Ear
-                const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
-                });
-                const data = await res.json();
-                if (data.error) throw new Error(data.error.message);
-                
-                output.innerText = `"${data.text}"`;
-                status.innerText = "Processing...";
-
-                // Groq Brain
-                const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        model: "llama-3.3-70b-versatile",
-                        messages: [{role:"system", content:"You are ARTHUR. Dry wit. Max 10 words. Sir."}, {role:"user", content: data.text}]
-                    })
-                });
-
-                const groqData = await groqRes.json();
-                const reply = groqData?.choices?.?.message?.content;
-
-                if (reply) {
-                    output.innerText = reply;
-                    window.speechSynthesis.speak(new SpeechSynthesisUtterance(reply));
-                    status.innerText = "CORE SECURED";
-                }
-            } catch(e) { 
-                output.innerText = "Diagnostic: " + e.message; 
-                status.innerText = "LINK FAILURE";
-            }
-        }
-
         async function start() {
-            if (mediaRecorder && mediaRecorder.state === "recording") return;
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
                 chunks = [];
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
+                mediaRecorder.onstop = async () => {
+                    status.innerText = "SENDING...";
+                    const blob = new Blob(chunks, { type: 'audio/mp4' });
+                    const fd = new FormData();
+                    fd.append("file", blob, "rec.m4a");
+                    fd.append("model", "whisper-1");
+
+                    try {
+                        const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+                            method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
+                        });
+                        const data = await res.json();
+                        output.innerText = `"${data.text}"`;
+
+                        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                            method: "POST",
+                            headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                model: "llama-3.3-70b-versatile",
+                                messages: [{role:"system", content:"You are ARTHUR. Max 10 words. Sir."}, {role:"user", content: data.text}]
+                            })
+                        });
+                        const groqData = await groqRes.json();
+                        const reply = groqData.choices.message.content;
+                        output.innerText = reply;
+                        window.speechSynthesis.speak(new SpeechSynthesisUtterance(reply));
+                        status.innerText = "READY";
+                    } catch (e) { output.innerText = "Error: " + e.message; }
+                };
                 mediaRecorder.start();
-                
-                status.innerText = "Listening...";
-                reactor.style.boxShadow = "0 0 40px #00f2ff";
-                reactor.style.background = "rgba(0, 242, 255, 0.15)";
-            } catch(e) {
-                status.innerText = "Mic Blocked";
-            }
+                status.innerText = "LISTENING...";
+            } catch (e) { status.innerText = "MIC ERROR"; }
         }
 
         function stop() {
             if (mediaRecorder && mediaRecorder.state === "recording") {
                 mediaRecorder.stop();
-                reactor.style.boxShadow = "none";
-                reactor.style.background = "none";
             }
         }
 
-        // --- Hardware Interface ---
-        reactor.addEventListener('touchstart', (e) => { e.preventDefault(); start(); }, {passive: false});
-        reactor.addEventListener('touchend', (e) => { e.preventDefault(); stop(); }, {passive: false});
-        
-        // Initial Audio Handshake
+        // Standard Button Events
+        btn.onmousedown = start;
+        btn.onmouseup = stop;
+        btn.ontouchstart = start;
+        btn.ontouchend = stop;
+
+        // Wake up speech synthesis
         document.addEventListener('touchstart', () => { window.speechSynthesis.getVoices(); }, {once: true});
     </script>
 </body>
