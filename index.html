@@ -46,7 +46,7 @@
             fd.append("model", "whisper-1");
 
             try {
-                // EAR (OpenAI)
+                // EAR (OpenAI Whisper)
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
                     method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
@@ -56,20 +56,24 @@
                 output.innerText = `"${data.text}"`;
                 status.innerText = "THINKING...";
 
-                // BRAIN (Groq)
+                // BRAIN (Groq Llama 3)
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role:"system", content:"You are ARTHUR. A digital squire. Dry British wit. Max 10 words. Sir."}, {role:"user", content: data.text}]
+                        messages: [
+                            {role:"system", content:"You are ARTHUR. A digital squire. Dry British wit. Max 10 words. Sir."}, 
+                            {role:"user", content: data.text}
+                        ]
                     })
                 });
 
                 const groqData = await groqRes.json();
                 if (groqData.error) throw new Error("Groq: " + groqData.error.message);
 
-                if (groqData.choices && groqData.choices) {
+                // FIXED: Checking for the first index of the choices array
+                if (groqData.choices && groqData.choices.length > 0) {
                     const reply = groqData.choices.message.content;
                     output.innerText = reply;
                     speak(reply);
@@ -92,20 +96,40 @@
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 status.innerText = "LISTENING";
-            } catch(e) { status.innerText = "MIC_ERROR"; }
+            } catch(e) { 
+                status.innerText = "MIC_ERROR"; 
+                output.innerText = "Ensure microphone permissions are granted.";
+            }
         }
 
         function speak(t) { 
             window.speechSynthesis.cancel(); 
             const u = new SpeechSynthesisUtterance(t); 
-            u.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB')) || null;
+            // Attempt to find a British voice for ARTHUR
+            const voices = window.speechSynthesis.getVoices();
+            u.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
+            u.pitch = 0.9;
+            u.rate = 1.0;
             window.speechSynthesis.speak(u); 
         }
 
         const r = document.getElementById('arc-reactor');
-        r.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); }, {passive: false});
-        r.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder) mediaRecorder.stop(); }, {passive: false});
-        document.body.addEventListener('click', () => { window.speechSynthesis.getVoices(); }, {once: true});
+        
+        // Touch events for mobile "Push to Talk"
+        r.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            startListening(); 
+        }, {passive: false});
+
+        r.addEventListener('touchend', (e) => { 
+            e.preventDefault(); 
+            if(mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); 
+        }, {passive: false});
+
+        // Initialize voices on first click (Chrome/Safari requirement)
+        document.body.addEventListener('click', () => { 
+            window.speechSynthesis.getVoices(); 
+        }, {once: true});
     </script>
 </body>
 </html>
