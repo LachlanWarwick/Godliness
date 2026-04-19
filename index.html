@@ -142,28 +142,39 @@
             }
         }
 
-        async function startListening() {
-            const gKey = localStorage.getItem('groq_key');
-            const oKey = localStorage.getItem('openai_key');
-            if(!gKey || !oKey) { toggleVault(); return; }
+        /* Replace your startListening function with this more aggressive version */
+async function startListening() {
+    const gKey = localStorage.getItem('groq_key');
+    const oKey = localStorage.getItem('openai_key');
+    
+    if(!gKey || !oKey) { toggleVault(); return; }
 
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.start();
-                status.innerText = "LISTENING...";
-                audioChunks = [];
+    // This forces Safari to acknowledge the audio intent
+    window.speechSynthesis.getVoices(); 
 
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
-                    processVoice(blob, oKey, gKey);
-                };
-            } catch(e) {
-                status.innerText = "MIC_BLOCK";
-                output.innerText = "Please enable microphone permissions in Safari.";
-            }
-        }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: { echoCancellation: true, noiseSuppression: true } 
+        });
+        
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+            processVoice(blob, oKey, gKey);
+        };
+
+        mediaRecorder.start();
+        status.innerText = "LISTENING...";
+        output.innerText = "Awaiting command, Sir...";
+    } catch(e) {
+        status.innerText = "LINK_DENIED";
+        output.innerText = "Sir, Safari is blocking the mic. Tap the URL bar > AA > Website Settings > Allow Microphone.";
+    }
+}
+
 
         function speak(text) {
             window.speechSynthesis.cancel();
