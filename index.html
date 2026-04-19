@@ -2,109 +2,112 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR FORCE-SYNC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ARTHUR PROJECT: BRAIN</title>
     <style>
-        :root { --gold: #ffd700; --bg: #000; }
-        body { background: var(--bg); color: var(--gold); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; height: 100vh; margin: 0; justify-content: space-around; overflow: hidden; }
-        #core { width: 130px; height: 130px; border: 2px solid var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 10px var(--gold); }
-        #display { width: 85%; text-align: center; border-top: 1px solid var(--gold); padding: 20px; min-height: 140px; background: rgba(255, 215, 0, 0.05); }
-        #ptt-btn { width: 110px; height: 110px; border-radius: 50%; border: 4px solid var(--gold); background: transparent; color: var(--gold); font-weight: bold; }
-        #ptt-btn:active { background: var(--gold); color: black; }
+        :root { --glow: #00f2ff; --bg: #00050a; } /* Switched to Cyan for a JARVIS feel */
+        body { background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        #arc-reactor { width: 150px; height: 150px; border: 3px solid var(--glow); border-radius: 50%; box-shadow: 0 0 20px var(--glow); display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; }
+        #arc-reactor.active { animation: pulse 0.5s infinite alternate; }
+        #status-text { margin-top: 30px; font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.7; }
+        #ai-output { width: 80%; text-align: center; margin-top: 20px; font-style: italic; min-height: 50px; }
+        @keyframes pulse { from { transform: scale(1); box-shadow: 0 0 20px var(--glow); } to { transform: scale(1.05); box-shadow: 0 0 40px var(--glow); } }
     </style>
 </head>
 <body>
 
-    <div id="core">A</div>
-
-    <div id="display">
-        <div id="status">SECURE_LINK</div>
-        <div id="text">"Tap to initialize, Sir."</div>
+    <div id="arc-reactor" id="trigger">
+        <div id="inner-core">A</div>
     </div>
 
-    <button id="ptt-btn">HOLD</button>
+    <div id="status-text">Neural Link: Standby</div>
+    <div id="ai-output">"Waiting for command, Sir."</div>
 
     <script>
-        const status = document.getElementById('status');
-        const output = document.getElementById('text');
-        const btn = document.getElementById('ptt-btn');
+        // --- SECURE KEYS ---
+        const GROQ_KEY = "YOUR_GROQ_API_KEY";
+        const OPENAI_KEY = "YOUR_OPENAI_API_KEY";
 
-        const brain = {
-            "status": "Armor integrity is optimal. All systems are green, Sir.",
-            "hello": "Greetings, Sir. I am ARTHUR.",
-            "power": "Power cells are at maximum capacity.",
-            "who": "I am ARTHUR, your digital squire.",
-            "identify": "You are the Cyber-Knight, Sir."
-        };
+        const reactor = document.getElementById('arc-reactor');
+        const status = document.getElementById('status-text');
+        const output = document.getElementById('ai-output');
 
-        const recognition = new (window.webkitSpeechRecognition || window.SpeechRecognition)();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
+        let mediaRecorder;
+        let audioChunks = [];
 
-        let watchdog;
-
-        btn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            window.speechSynthesis.cancel();
-            try {
-                recognition.start();
-                status.innerText = "LISTENING...";
-            } catch(err) {}
-        });
-
-        btn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            recognition.stop();
-            status.innerText = "PROCESSING...";
-
-            // FORCE RESET: If no result in 3 seconds, kill it and reset
-            watchdog = setTimeout(() => {
-                if (status.innerText === "PROCESSING...") {
-                    status.innerText = "RE-SYNCING";
-                    output.innerText = "Connection weak. Please try again, Sir.";
-                    recognition.abort(); // Force-kill the listener
-                }
-            }, 3000);
-        });
-
-        recognition.onresult = (event) => {
-            clearTimeout(watchdog); // Stop the watchdog
-            const transcript = event.results.transcript.toLowerCase();
-            output.innerText = `"${transcript}"`;
+        // 1. MIC CAPTURE (HARDWARE LEVEL)
+        async function startListening() {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.start();
             
-            let response = "I don't have a protocol for that, Sir.";
-            for (let key in brain) {
-                if (transcript.includes(key)) {
-                    response = brain[key];
-                    break;
-                }
-            }
+            status.innerText = "LISTENING...";
+            reactor.classList.add('active');
 
-            output.innerText = response;
-            speak(response);
-            status.innerText = "STANDBY";
-        };
+            mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                processVoice(audioBlob);
+                audioChunks = [];
+            };
+        }
 
-        recognition.onerror = (e) => {
-            clearTimeout(watchdog);
-            status.innerText = "LINK ERROR";
-            output.innerText = "Sir, voice link failed. Error: " + e.error;
-        };
+        // 2. WHISPER: THE EARS (TRANSCRIBE)
+        async function processVoice(blob) {
+            status.innerText = "TRANSCRIBING...";
+            const formData = new FormData();
+            formData.append("file", blob, "recording.webm");
+            formData.append("model", "whisper-1");
+
+            const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+                headers: { "Authorization": `Bearer ${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
+}` },
+                method: "POST",
+                body: formData
+            });
+            const data = await res.json();
+            think(data.text);
+        }
+
+        // 3. GROQ: THE BRAIN (LLAMA 3)
+        async function think(userText) {
+            status.innerText = "THINKING...";
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                headers: { 
+                    "Authorization": `Bearer ${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}`,
+                    "Content-Type": "application/json" 
+                },
+                method: "POST",
+                body: JSON.stringify({
+                    model: "llama3-8b-8192",
+                    messages: [
+                        { role: "system", content: "You are ARTHUR, a British AI squire. Formal, dry wit. Max 15 words. Address as Sir." },
+                        { role: "user", content: userText }
+                    ]
+                })
+            });
+            const data = await res.json();
+            const reply = data.choices.message.content;
+            
+            output.innerText = reply;
+            speak(reply);
+            status.innerText = "NEURAL LINK: STANDBY";
+            reactor.classList.remove('active');
+        }
 
         function speak(text) {
             const utter = new SpeechSynthesisUtterance(text);
-            const voices = window.speechSynthesis.getVoices();
-            utter.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
-            utter.pitch = 0.95;
+            utter.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB')) || window.speechSynthesis.getVoices();
             window.speechSynthesis.speak(utter);
         }
 
-        document.body.addEventListener('click', () => {
-            window.speechSynthesis.getVoices();
-            status.innerText = "ONLINE";
-            output.innerText = "Ready, Sir. Hold the button and speak.";
-        }, {once: true});
+        // TRIGGER LOGIC
+        reactor.addEventListener('mousedown', startListening);
+        reactor.addEventListener('mouseup', () => mediaRecorder.stop());
+        
+        // Touch support for Mobile
+        reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
+        reactor.addEventListener('touchend', () => mediaRecorder.stop());
     </script>
 </body>
 </html>
