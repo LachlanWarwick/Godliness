@@ -3,33 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v11.4</title>
+    <title>ARTHUR v11.5</title>
     <style>
         :root { --glow: #00f2ff; --bg: #050000; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: none; }
-        body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; }
+        /* CRITICAL: Disables all Safari default touch behaviors */
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+            -webkit-user-select: none; 
+            user-select: none; 
+            touch-action: none; 
+        }
+        body { 
+            background: var(--bg); color: var(--glow); 
+            font-family: sans-serif; display: flex; 
+            flex-direction: column; align-items: center; 
+            justify-content: space-around; height: 100vh; margin: 0; 
+        }
         #arc-reactor { 
-            width: 180px; height: 180px; 
+            width: 200px; height: 200px; 
             border: 4px solid var(--glow); border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; 
-            font-size: 4rem; text-shadow: 0 0 10px var(--glow); 
+            font-size: 5rem; text-shadow: 0 0 10px var(--glow); 
             box-shadow: inset 0 0 30px var(--glow), 0 0 20px var(--glow); 
-            cursor: pointer; position: relative; z-index: 10;
+            position: relative; z-index: 100;
         }
-        .ring { position: absolute; width: 110%; height: 110%; border: 2px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.4; pointer-events: none; }
-        #display-panel { width: 90%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 160px; }
-        #status { font-size: 0.8rem; letter-spacing: 4px; font-weight: bold; margin-bottom: 10px; color: var(--glow); }
-        #output { font-size: 1.1rem; font-style: italic; color: #fff; word-wrap: break-word; line-height: 1.4; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        #display-panel { width: 90%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; }
+        #status { font-size: 0.8rem; letter-spacing: 4px; font-weight: bold; margin-bottom: 10px; }
+        #output { font-size: 1.1rem; font-style: italic; color: #fff; }
     </style>
 </head>
-<body>
-
-    <div id="arc-reactor"><div class="ring"></div>A</div>
+<body oncontextmenu="return false;"> <div id="arc-reactor">A</div>
 
     <div id="display-panel">
-        <div id="status">V11.4 READY</div>
-        <div id="output">"Force touch protocols engaged. Tap or hold the A, Sir."</div>
+        <div id="status">V11.5 ARMED</div>
+        <div id="output">"Hold A to speak, Sir."</div>
     </div>
 
     <script>
@@ -55,7 +63,7 @@
                     method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
-                if (!data?.text) throw new Error(data?.error?.message || "Speech not recognized.");
+                if (!data?.text) throw new Error(data?.error?.message || "Silence detected.");
                 output.innerText = `"${data.text}"`;
 
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -75,7 +83,7 @@
                     speak(reply);
                     status.innerText = "READY";
                 } else {
-                    throw new Error("Brain: " + (groqData?.error?.message || "Invalid response."));
+                    throw new Error(groqData?.error?.message || "Brain mismatch.");
                 }
             } catch(e) { 
                 status.innerText = "ALERT"; 
@@ -92,8 +100,8 @@
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 status.innerText = "LISTENING";
-                reactor.style.boxShadow = "inset 0 0 50px var(--glow), 0 0 40px var(--glow)";
-            } catch(e) { status.innerText = "MIC_ERR"; output.innerText = "Allow Microphone Access."; }
+                reactor.style.boxShadow = "0 0 60px var(--glow)";
+            } catch(e) { status.innerText = "MIC_ERR"; }
         }
 
         function stopListening() {
@@ -108,13 +116,21 @@
             window.speechSynthesis.speak(new SpeechSynthesisUtterance(t)); 
         }
 
-        // UNIVERSAL INPUT HANDLERS
-        reactor.addEventListener('pointerdown', (e) => { e.preventDefault(); startListening(); });
-        reactor.addEventListener('pointerup', (e) => { e.preventDefault(); stopListening(); });
-        reactor.addEventListener('pointerleave', (e) => { e.preventDefault(); stopListening(); });
-        
-        // Final wake-up for iOS audio
-        document.body.addEventListener('touchstart', () => { window.speechSynthesis.getVoices(); }, {once: true});
+        // AGGRESSIVE TOUCH BINDING
+        reactor.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            startListening(); 
+        }, {passive: false});
+
+        reactor.addEventListener('touchend', (e) => { 
+            e.preventDefault(); 
+            stopListening(); 
+        }, {passive: false});
+
+        // Initialize Audio Engine
+        document.body.addEventListener('touchstart', () => { 
+            window.speechSynthesis.getVoices(); 
+        }, {once: true});
     </script>
 </body>
 </html>
