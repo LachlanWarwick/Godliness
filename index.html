@@ -3,118 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v11.6 Stable</title>
+    <title>ARTHUR v12.7 - Alfred Protocol</title>
     <style>
-        :root { --glow: #00f2ff; --bg: #000b14; }
+        :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
-        body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
+        body { background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
         
-        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
-        #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 5px; cursor: pointer; box-shadow: 0 0 15px var(--glow); font-weight: bold; }
+        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.8s; }
+        #init-btn { border: 1px solid var(--glow); padding: 15px 30px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 10px var(--glow); font-weight: 300; }
 
-        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; z-index: 5; }
-        .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
-        #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
-        #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px; color: var(--glow); }
-        #output { font-size: 0.95rem; font-style: italic; color: #fff; word-wrap: break-word; }
+        #arc-reactor { width: 180px; height: 180px; border: 1px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 15px var(--glow); box-shadow: inset 0 0 30px var(--hologram), 0 0 20px var(--hologram); cursor: pointer; position: relative; z-index: 5; transition: all 0.3s; }
+        #arc-reactor.active { box-shadow: inset 0 0 50px var(--glow), 0 0 30px var(--glow); transform: scale(1.05); }
+        
+        .ring { position: absolute; width: 120%; height: 120%; border: 1px solid var(--hologram); border-radius: 50%; border-top: 2px solid var(--glow); animation: spin 4s linear infinite; }
+        .scanner { position: absolute; width: 100%; height: 2px; background: var(--glow); top: 50%; opacity: 0; box-shadow: 0 0 10px var(--glow); pointer-events: none; }
+        .listening .scanner { animation: scan 1.5s ease-in-out infinite; opacity: 0.5; }
+
+        #display-panel { width: 90%; text-align: center; padding: 20px; border-top: 1px solid var(--hologram); }
+        #status { font-size: 0.6rem; letter-spacing: 5px; opacity: 0.7; margin-bottom: 10px; text-transform: uppercase; }
+        #output { font-size: 1.1rem; font-weight: 300; line-height: 1.4; color: #e0faff; min-height: 60px; font-style: italic; }
+
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes scan { 0% { top: 10%; } 50% { top: 90%; } 100% { top: 10%; } }
     </style>
 </head>
 <body>
 
     <div id="init-screen">
-        <button id="init-btn">Initialize Arthur</button>
-        <p style="margin-top: 20px; font-size: 0.6rem; letter-spacing: 2px;">SECURE PROTOCOL v11.6</p>
+        <button id="init-btn">Initialize Alfred Protocol</button>
     </div>
 
-    <div id="arc-reactor"><div class="ring"></div>A</div>
+    <div id="arc-reactor">
+        <div class="ring"></div>
+        <div class="scanner"></div>
+        A
+    </div>
 
     <div id="display-panel">
         <div id="status">OFFLINE</div>
-        <div id="output">"System awaiting initialization, Sir."</div>
+        <div id="output">"Standing by for your instructions, Sir."</div>
     </div>
 
     <script>
-        const GK_A = "gsk_";
-        const GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
-        const OK_A = "sk-proj-";
-        const OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
-
-        const F_GK = GK_A + GK_B;
-        const F_OK = OK_A + OK_B;
-
-        const status = document.getElementById('status'), output = document.getElementById('output');
+        const GK_A = "gsk_", GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
+        const OK_A = "sk-proj-", OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
+        const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
+        
+        const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor');
         let mediaRecorder, chunks = [];
 
-        // INITIALIZATION LOGIC WITH MIC PERMISSION
         document.getElementById('init-btn').addEventListener('click', async () => {
             try {
-                // This triggers the "Allow Microphone" popup immediately
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                // We stop it immediately just to clear the permission for later use
-                stream.getTracks().forEach(track => track.stop());
-
-                // Unlock Speech Engine
+                stream.getTracks().forEach(t => t.stop());
                 window.speechSynthesis.getVoices();
-                const unlock = new SpeechSynthesisUtterance("");
-                window.speechSynthesis.speak(unlock);
                 
-                // Hide screen and update UI
+                const hour = new Date().getHours();
+                const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+                speak(`${greet}, Sir. I have taken the liberty of stabilizing the neural link. I am ready when you are.`);
+                
                 document.getElementById('init-screen').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('init-screen').style.display = 'none';
+                setTimeout(() => { 
+                    document.getElementById('init-screen').style.display = 'none'; 
                     status.innerText = "NEURAL LINK ACTIVE";
-                    output.innerText = "Ready for duty, Sir. Hold the core to speak.";
-                }, 500);
-            } catch (err) {
-                alert("Microphone permission is required to initialize ARTHUR, Sir.");
-                console.error(err);
-            }
+                }, 800);
+            } catch (e) { alert("Permission is required for my operation, Sir."); }
         });
 
         async function processVoice(blob) {
-            status.innerText = "LINKING...";
+            status.innerText = "ANALYZING INTENT...";
+            reactor.classList.remove('listening');
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
             fd.append("model", "whisper-1");
 
             try {
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${F_OK}` },
-                    body: fd
+                    method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
-                if (data.error) throw new Error(data.error.message);
-                
+                const text = data.text.toLowerCase().trim().replace(/[.?!]/g, "");
                 output.innerText = `"${data.text}"`;
-                status.innerText = "THINKING...";
 
+                // --- INTUITIVE APP LAUNCHING ---
+                const knownApps = ["spotify", "youtube", "whatsapp", "instagram", "facebook", "maps", "netflix", "shortcuts", "safari"];
+                const launchKeywords = ["open", "launch", "run", "start", "interface with"];
+                
+                let targetApp = null;
+
+                for (let kw of launchKeywords) {
+                    if (text.startsWith(kw + " ")) {
+                        targetApp = text.split(kw + " ");
+                        break;
+                    }
+                }
+
+                if (!targetApp && (knownApps.includes(text) || (text.length < 15 && text.split(" ").length === 1))) {
+                    targetApp = text; 
+                }
+
+                if (targetApp) {
+                    speak(`As you wish, Sir. Initializing the ${targetApp} interface immediately.`);
+                    setTimeout(() => { 
+                        const urls = {"spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "instagram": "instagram://"};
+                        window.location.href = urls[targetApp] || `shortcuts://run-shortcut?name=${encodeURIComponent(targetApp)}`;
+                    }, 1500);
+                    return;
+                }
+
+                // --- WEATHER PROTOCOL ---
+                if (text.includes("weather") || text.includes("temperature") || text.includes("outside")) {
+                    status.innerText = "CONSULTING SATELLITES...";
+                    navigator.geolocation.getCurrentPosition(async (pos) => {
+                        const { latitude, longitude } = pos.coords;
+                        const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+                        const wData = await wRes.json();
+                        const temp = Math.round(wData.current_weather.temperature);
+                        speak(`I have consulted the local meteorological stations, Sir. It is currently ${temp} degrees Celsius. Do dress accordingly.`);
+                    }, () => speak("I'm afraid I cannot access your current coordinates to check the weather, Sir."));
+                    return;
+                }
+
+                // --- UTILITY COMMANDS ---
+                if (text.includes("battery") || text.includes("power")) {
+                    const bat = await navigator.getBattery();
+                    speak(`I have conducted a brief scan of the power cells, Sir. We are currently operating at ${Math.round(bat.level * 100)} percent capacity.`);
+                    return;
+                }
+
+                if (text.includes("time")) {
+                    const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    speak(`It is currently ${time}, Sir. Do let me know if you require a more precise chronometric reading.`);
+                    return;
+                }
+
+                // --- ALFRED BRAIN ---
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are ARTHUR. Dry British wit. Max 10 words. Sir."},
+                            {role: "system", content: "You are ARTHUR, a loyal and highly verbose British AI butler. You are protective, elegant, and sophisticated. Address the user as 'Sir'. Use complex, polite vocabulary. Max 25 words."},
                             {role: "user", content: data.text}
                         ]
                     })
                 });
 
                 const groqData = await groqRes.json();
+                const reply = groqData.choices[0].message.content;
+                output.innerText = reply;
+                speak(reply);
+                status.innerText = "READY";
+            } catch(e) { status.innerText = "SYSTEM ERROR"; }
+        }
 
-                if (groqData.choices && groqData.choices.length > 0) {
-                    // Fixed: Added .choices.message
-                    const reply = groqData.choices[0].message.content;
-                    output.innerText = reply;
-                    speak(reply);
-                    status.innerText = "READY";
-                }
-            } catch(e) {
-                status.innerText = "SYSTEM ERROR";
-                output.innerText = e.message;
-            }
+        function speak(t) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(t);
+            const voices = window.speechSynthesis.getVoices();
+            const jamie = voices.find(v => v.name.includes('Jamie'));
+            const daniel = voices.find(v => v.name.includes('Daniel'));
+            
+            u.voice = jamie || daniel || voices.find(v => v.lang.includes('en-GB')) || voices[0];
+            u.volume = 1.0;
+            u.rate = 0.9;
+            
+            u.onstart = () => reactor.classList.add('active');
+            u.onend = () => reactor.classList.remove('active');
+            window.speechSynthesis.speak(u);
         }
 
         async function startListening() {
@@ -125,35 +182,13 @@
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
-                status.innerText = "LISTENING";
-            } catch(e) {
-                status.innerText = "MIC_ERROR";
-            }
+                status.innerText = "LISTENING...";
+                reactor.classList.add('listening');
+            } catch(e) { status.innerText = "MIC_ERROR"; }
         }
 
-        function speak(t) {
-            window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(t);
-            const voices = window.speechSynthesis.getVoices();
-            const britishVoice = voices.find(v => v.lang.includes('en-GB'));
-            
-            // Fixed: Using voices to pick the first backup voice if British is missing
-            u.voice = britishVoice || voices[0];
-            u.volume = 1;
-            window.speechSynthesis.speak(u);
-        }
-
-        const r = document.getElementById('arc-reactor');
-        r.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            startListening();
-        }, {passive: false});
-
-        r.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
-        }, {passive: false});
-
+        reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
+        reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
     </script>
 </body>
 </html>
