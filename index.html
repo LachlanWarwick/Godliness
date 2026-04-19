@@ -2,93 +2,84 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v11.9</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ARTHUR v12.0</title>
     <style>
-        :root { --glow: #00f2ff; --bg: #050000; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: none; }
-        body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-        
-        #arc-reactor { 
-            width: 160px; height: 160px; 
-            border: 4px solid var(--glow); border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; 
-            font-size: 4rem; text-shadow: 0 0 10px var(--glow); 
-            box-shadow: inset 0 0 20px var(--glow), 0 0 20px var(--glow); 
-            cursor: pointer; transition: all 0.2s;
+        body { 
+            background: #050000; color: #00f2ff; 
+            font-family: sans-serif; margin: 0; 
+            display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; 
+            height: 100vh; overflow: hidden;
+            -webkit-user-select: none; user-select: none;
         }
-
-        #display-panel { width: 85%; text-align: center; margin-top: 40px; border-top: 1px solid rgba(0, 242, 255, 0.3); padding-top: 20px; }
-        #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 10px; color: var(--glow); }
-        #output { font-size: 1rem; font-style: italic; color: #fff; word-wrap: break-word; line-height: 1.4; min-height: 60px; }
+        #arc-reactor { 
+            width: 180px; height: 180px; 
+            border: 6px solid #00f2ff; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 5rem; font-weight: bold;
+            box-shadow: 0 0 20px #00f2ff;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none; /* Critical for iOS */
+        }
+        #display-panel { margin-top: 40px; text-align: center; width: 85%; }
+        #status { font-size: 0.7rem; letter-spacing: 3px; margin-bottom: 10px; opacity: 0.8; }
+        #output { font-size: 1rem; color: #fff; font-style: italic; min-height: 50px; }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
 
     <div id="arc-reactor">A</div>
 
     <div id="display-panel">
-        <div id="status">SYSTEM ARMED</div>
-        <div id="output">"Awaiting your command, Sir."</div>
+        <div id="status">CORE V12.0</div>
+        <div id="output">"Hold the center, Sir."</div>
     </div>
 
     <script>
-        // DISGUISED KEYS
         const GK = "gsk_" + "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
         const OK = "sk-proj-" + "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
 
-        const status = document.getElementById('status'), 
-              output = document.getElementById('output'), 
-              reactor = document.getElementById('arc-reactor');
+        const reactor = document.getElementById('arc-reactor');
+        const status = document.getElementById('status');
+        const output = document.getElementById('output');
         
         let mediaRecorder, chunks = [];
 
         async function processVoice(blob) {
-            output.innerText = "Processing audio...";
-            status.innerText = "UPLOADING";
-
+            output.innerText = "Processing...";
             const fd = new FormData();
-            fd.append("file", blob, "rec.m4a");
+            fd.append("file", blob, "audio.m4a");
             fd.append("model", "whisper-1");
 
             try {
-                // 1. TRANSCRIPTION
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
                     method: "POST", headers: { "Authorization": `Bearer ${OK}` }, body: fd
                 });
                 const data = await res.json();
+                if (data.error) throw new Error(data.error.message);
                 
-                if (data.error) throw new Error("OpenAI: " + data.error.message);
-                if (!data.text) throw new Error("No speech detected.");
-
                 output.innerText = `"${data.text}"`;
-                status.innerText = "THINKING";
 
-                // 2. INTELLIGENCE
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role:"system", content:"You are ARTHUR. Dry wit. Max 12 words. Sir."}, {role:"user", content: data.text}]
+                        messages: [{role:"system", content:"You are ARTHUR. Max 10 words. Sir."}, {role:"user", content: data.text}]
                     })
                 });
 
                 const groqData = await groqRes.json();
-                if (groqData.error) throw new Error("Groq: " + groqData.error.message);
-
                 const reply = groqData?.choices?.?.message?.content;
+
                 if (reply) {
                     output.innerText = reply;
-                    speak(reply);
-                    status.innerText = "READY";
-                } else {
-                    throw new Error("Brain returned empty response.");
+                    const u = new SpeechSynthesisUtterance(reply);
+                    window.speechSynthesis.speak(u);
                 }
-
             } catch(e) { 
-                status.innerText = "ERROR"; 
-                output.innerText = e.message; 
+                output.innerText = "Error: " + e.message; 
             }
         }
 
@@ -100,35 +91,34 @@
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
+                
                 status.innerText = "LISTENING";
-                reactor.style.boxShadow = "inset 0 0 40px var(--glow), 0 0 40px var(--glow)";
-            } catch(e) { 
-                status.innerText = "MIC_BLOCKED"; 
-                output.innerText = "Please allow microphone access in settings.";
+                reactor.style.boxShadow = "0 0 60px #00f2ff";
+                reactor.style.borderColor = "#fff";
+            } catch(e) {
+                status.innerText = "MIC BLOCKED";
             }
         }
 
         function stop() {
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
                 mediaRecorder.stop();
-                reactor.style.boxShadow = "inset 0 0 20px var(--glow), 0 0 20px var(--glow)";
+                status.innerText = "THINKING";
+                reactor.style.boxShadow = "0 0 20px #00f2ff";
+                reactor.style.borderColor = "#00f2ff";
             }
         }
 
-        function speak(t) { 
-            window.speechSynthesis.cancel(); 
-            const u = new SpeechSynthesisUtterance(t); 
-            u.voice = window.speechSynthesis.getVoices().find(v => v.lang.includes('en-GB')) || null;
-            window.speechSynthesis.speak(u); 
-        }
-
-        // POINTER EVENTS (Best for iOS Safari)
-        reactor.addEventListener('pointerdown', (e) => { e.preventDefault(); start(); });
-        reactor.addEventListener('pointerup', (e) => { e.preventDefault(); stop(); });
-        reactor.addEventListener('pointerleave', (e) => { if(mediaRecorder) stop(); });
+        // --- THE MOST BASIC TOUCH BINDING POSSIBLE ---
+        reactor.ontouchstart = (e) => { e.preventDefault(); start(); };
+        reactor.ontouchend = (e) => { e.preventDefault(); stop(); };
         
-        // Wake up audio engine on first interaction
-        document.body.addEventListener('touchstart', () => { window.speechSynthesis.getVoices(); }, {once: true});
+        // Final fallback for Desktop testing
+        reactor.onmousedown = start;
+        reactor.onmouseup = stop;
+
+        // Wake up speech
+        document.addEventListener('touchstart', () => { window.speechSynthesis.getVoices(); }, {once: true});
     </script>
 </body>
 </html>
