@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v8.5</title>
+    <title>ARTHUR v8.6</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
@@ -12,8 +12,8 @@
         #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
         #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px; }
         #output { font-size: 1.1rem; font-style: italic; }
-        #vault-icon { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; opacity: 0.4; }
-        #config-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #001520; border: 2px solid var(--glow); padding: 30px; border-radius: 15px; width: 90%; z-index: 100; }
+        #vault-icon { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; opacity: 0.4; cursor: pointer; }
+        #config-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #001520; border: 2px solid var(--glow); padding: 30px; border-radius: 15px; width: 90%; z-index: 100; box-shadow: 0 0 50px #000; }
         input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 10px 0; padding: 12px; font-family: monospace; border-radius: 5px; }
         button { background: var(--glow); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 5px; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -34,7 +34,7 @@
 
     <div id="display-panel">
         <div id="status">READY</div>
-        <div id="output">"Updating model parameters, Sir."</div>
+        <div id="output">"Diagnostic complete. Systems clear, Sir."</div>
     </div>
 
     <script>
@@ -81,20 +81,21 @@
                     method: "POST",
                     headers: { "Authorization": `Bearer ${gk}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        // V8.5 UPDATE: Using current generation model
                         model: "llama-3.3-70b-versatile",
                         messages: [{role:"system", content:"You are ARTHUR. A British AI squire. Formal, dry wit. Max 12 words. Address as Sir."}, {role:"user", content: text}]
                     })
                 });
                 
                 const data = await res.json();
-                if (data.choices && data.choices) {
+                
+                // --- CRITICAL V8.6 FIX: ROBUST DATA PATH CHECK ---
+                if (data && data.choices && data.choices && data.choices.message) {
                     const reply = data.choices.message.content;
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
                 } else {
-                    const errMsg = data.error?.message || "Brain Out of Sync";
+                    const errMsg = data.error?.message || "Brain Out of Sync: Unexpected Data Structure";
                     throw new Error(errMsg);
                 }
             } catch(e) { 
