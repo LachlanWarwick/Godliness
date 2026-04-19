@@ -3,96 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARTHUR PROJECT: BRAIN</title>
+    <title>ARTHUR: STEALTH CORE</title>
     <style>
-        :root { --glow: #00f2ff; --bg: #00050a; } /* Switched to Cyan for a JARVIS feel */
-        body { background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-        #arc-reactor { width: 150px; height: 150px; border: 3px solid var(--glow); border-radius: 50%; box-shadow: 0 0 20px var(--glow); display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; }
-        #arc-reactor.active { animation: pulse 0.5s infinite alternate; }
-        #status-text { margin-top: 30px; font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.7; }
-        #ai-output { width: 80%; text-align: center; margin-top: 20px; font-style: italic; min-height: 50px; }
-        @keyframes pulse { from { transform: scale(1); box-shadow: 0 0 20px var(--glow); } to { transform: scale(1.05); box-shadow: 0 0 40px var(--glow); } }
+        :root { --glow: #00f2ff; --bg: #000; }
+        body { background: var(--bg); color: var(--glow); font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        
+        #arc-reactor { width: 140px; height: 140px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px var(--glow); cursor: pointer; transition: 0.3s; }
+        #arc-reactor:active { transform: scale(0.95); box-shadow: 0 0 30px var(--glow); }
+        
+        #status { margin-top: 20px; font-size: 0.7rem; letter-spacing: 2px; }
+        #output { width: 80%; text-align: center; margin-top: 20px; min-height: 40px; font-size: 0.9rem; }
+
+        /* Secret Vault Styling */
+        #vault { position: absolute; top: 10px; right: 10px; font-size: 1.5rem; cursor: pointer; opacity: 0.3; }
+        #config-panel { display: none; position: absolute; background: #111; border: 1px solid var(--glow); padding: 20px; border-radius: 10px; z-index: 100; width: 80%; }
+        input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 10px 0; padding: 10px; box-sizing: border-box; }
+        button { background: var(--glow); color: #000; border: none; padding: 10px; width: 100%; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="arc-reactor" id="trigger">
-        <div id="inner-core">A</div>
+    <div id="vault" onclick="toggleVault()">⚙️</div>
+
+    <div id="config-panel">
+        <label>GROQ KEY:</label>
+        <input type="password" id="groq-input" placeholder="Paste Groq Key here">
+        <label>OPENAI KEY:</label>
+        <input type="password" id="openai-input" placeholder="Paste OpenAI Key here">
+        <button onclick="saveKeys()">INITIALIZE LINKS</button>
     </div>
 
-    <div id="status-text">Neural Link: Standby</div>
-    <div id="ai-output">"Waiting for command, Sir."</div>
+    <div id="arc-reactor">A</div>
+    <div id="status">NEURAL LINK: LOCKED</div>
+    <div id="output">"Awaiting API credentials, Sir."</div>
 
     <script>
-        // --- SECURE KEYS ---
-        const GROQ_KEY = "YOUR_GROQ_API_KEY";
-        const OPENAI_KEY = "YOUR_OPENAI_API_KEY";
-
+        const status = document.getElementById('status');
+        const output = document.getElementById('output');
         const reactor = document.getElementById('arc-reactor');
-        const status = document.getElementById('status-text');
-        const output = document.getElementById('ai-output');
+        let mediaRecorder, audioChunks = [];
 
-        let mediaRecorder;
-        let audioChunks = [];
+        function toggleVault() {
+            const panel = document.getElementById('config-panel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        }
 
-        // 1. MIC CAPTURE (HARDWARE LEVEL)
+        function saveKeys() {
+            localStorage.setItem('groq_key', document.getElementById('groq-input').value);
+            localStorage.setItem('openai_key', document.getElementById('openai-input').value);
+            toggleVault();
+            status.innerText = "NEURAL LINK: STANDBY";
+            output.innerText = "Credentials accepted. System ready.";
+        }
+
         async function startListening() {
+            const gKey = localStorage.getItem('groq_key');
+            const oKey = localStorage.getItem('openai_key');
+            if(!gKey || !oKey) { toggleVault(); return; }
+
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
             mediaRecorder.start();
-            
             status.innerText = "LISTENING...";
-            reactor.classList.add('active');
+            audioChunks = [];
 
-            mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
             mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                processVoice(audioBlob);
-                audioChunks = [];
+                const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                processVoice(blob, oKey, gKey);
             };
         }
 
-        // 2. WHISPER: THE EARS (TRANSCRIBE)
-        async function processVoice(blob) {
-            status.innerText = "TRANSCRIBING...";
+        async function processVoice(blob, oKey, gKey) {
+            status.innerText = "UPLOADING TO EARS...";
             const formData = new FormData();
-            formData.append("file", blob, "recording.webm");
+            formData.append("file", blob, "audio.webm");
             formData.append("model", "whisper-1");
 
-            const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                headers: { "Authorization": `Bearer ${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
-}` },
-                method: "POST",
-                body: formData
-            });
-            const data = await res.json();
-            think(data.text);
+            try {
+                const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+                    headers: { "Authorization": `Bearer ${oKey}` },
+                    method: "POST",
+                    body: formData
+                });
+                const data = await res.json();
+                think(data.text, gKey);
+            } catch(e) { status.innerText = "EARS ERROR"; }
         }
 
-        // 3. GROQ: THE BRAIN (LLAMA 3)
-        async function think(userText) {
-            status.innerText = "THINKING...";
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                headers: { 
-                    "Authorization": `Bearer ${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}`,
-                    "Content-Type": "application/json" 
-                },
-                method: "POST",
-                body: JSON.stringify({
-                    model: "llama3-8b-8192",
-                    messages: [
-                        { role: "system", content: "You are ARTHUR, a British AI squire. Formal, dry wit. Max 15 words. Address as Sir." },
-                        { role: "user", content: userText }
-                    ]
-                })
-            });
-            const data = await res.json();
-            const reply = data.choices.message.content;
-            
-            output.innerText = reply;
-            speak(reply);
-            status.innerText = "NEURAL LINK: STANDBY";
-            reactor.classList.remove('active');
+        async function think(text, gKey) {
+            status.innerText = "ARTHUR THINKING...";
+            try {
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    headers: { "Authorization": `Bearer ${gKey}`, "Content-Type": "application/json" },
+                    method: "POST",
+                    body: JSON.stringify({
+                        model: "llama3-8b-8192",
+                        messages: [{role:"system", content:"You are ARTHUR, a British AI. Formal. Max 15 words. Sir."}, {role:"user", content: text}]
+                    })
+                });
+                const data = await res.json();
+                const reply = data.choices.message.content;
+                output.innerText = reply;
+                speak(reply);
+                status.innerText = "NEURAL LINK: STANDBY";
+            } catch(e) { status.innerText = "BRAIN ERROR"; }
         }
 
         function speak(text) {
@@ -101,13 +116,8 @@
             window.speechSynthesis.speak(utter);
         }
 
-        // TRIGGER LOGIC
-        reactor.addEventListener('mousedown', startListening);
-        reactor.addEventListener('mouseup', () => mediaRecorder.stop());
-        
-        // Touch support for Mobile
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
-        reactor.addEventListener('touchend', () => mediaRecorder.stop());
+        reactor.addEventListener('touchend', () => { if(mediaRecorder) mediaRecorder.stop(); });
     </script>
 </body>
 </html>
