@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARTHUR v12.7</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ARTHUR v12.8</title>
     <style>
-        body { background: #000b14; color: #00f2ff; font-family: sans-serif; text-align: center; padding-top: 50px; }
+        body { background: #000b14; color: #00f2ff; font-family: sans-serif; text-align: center; padding-top: 50px; margin: 0; overflow: hidden; }
         
         #arc-reactor { 
             width: 180px; height: 180px; 
@@ -15,32 +15,33 @@
             display: inline-block;
             position: relative; 
             z-index: 999;       
-            transition: all 0.3s;
+            transition: all 0.2s;
+            
+            /* CRITICAL: Stops the "A" from being selected/highlighted */
+            -webkit-user-select: none; 
+            user-select: none;
+            -webkit-touch-callout: none; /* Stops the "Copy/Paste" menu */
             -webkit-tap-highlight-color: transparent;
         }
 
-        #arc-reactor:active { transform: scale(0.95); }
+        #arc-reactor:active { transform: scale(0.92); }
         .recording { background: rgba(0, 242, 255, 0.3) !important; box-shadow: 0 0 30px #00f2ff; }
-        #output { margin-top: 30px; color: white; padding: 20px; font-style: italic; position: relative; }
-        #status { margin-top: 15px; font-weight: bold; letter-spacing: 2px; }
+        #output { margin-top: 30px; color: white; padding: 20px; font-style: italic; min-height: 80px; }
+        #status { margin-top: 15px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; font-size: 0.8rem; }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
 
     <button id="arc-reactor">A</button>
-    <div id="status">TAP TO START</div>
-    <div id="output">"Diagnostic mode. Tap the A, Sir."</div>
+    <div id="status">Tap to Start</div>
+    <div id="output">"No-selection protocols active. Sir."</div>
 
     <script>
-        // --- SECURE KEY FRAGMENTATION ---
+        // --- SECURE KEYS ---
         const GK_1 = "gsk_";
         const GK_2 = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
-        
         const OK_1 = "sk-proj-";
         const OK_2 = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
-
-        const FINAL_GK = GK_1 + GK_2;
-        const FINAL_OK = OK_1 + OK_2;
 
         const btn = document.getElementById('arc-reactor');
         const output = document.getElementById('output');
@@ -59,10 +60,10 @@
                     mediaRecorder.start();
                     
                     btn.classList.add('recording');
-                    status.innerText = "LISTENING... (TAP AGAIN)";
+                    status.innerText = "RECORDING...";
                 } catch (e) { 
                     status.innerText = "MIC ERROR";
-                    output.innerText = "Check mic permissions in your browser settings.";
+                    output.innerText = "Microphone access denied.";
                 }
             } else {
                 mediaRecorder.stop();
@@ -78,38 +79,31 @@
             fd.append("model", "whisper-1");
 
             try {
-                // OpenAI Transcription
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
                     method: "POST", 
-                    headers: { "Authorization": `Bearer ${FINAL_OK}` }, 
+                    headers: { "Authorization": `Bearer ${OK_1 + OK_2}` }, 
                     body: fd
                 });
                 const data = await res.json();
-                if (!data?.text) throw new Error(data?.error?.message || "Whisper failed.");
+                if (!data?.text) throw new Error("Whisper failed.");
 
                 output.innerText = `"${data.text}"`;
 
-                // Groq Intelligence
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: { "Authorization": `Bearer ${FINAL_GK}`, "Content-Type": "application/json" },
+                    headers: { "Authorization": `Bearer ${GK_1 + GK_2}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.1-8b-instant",
-                        messages: [{role:"system", content:"You are ARTHUR. Max 10 words. Sir."}, {role:"user", content: data.text}]
+                        messages: [{role:"system", content:"You are ARTHUR. Witty. Max 10 words. Sir."}, {role:"user", content: data.text}]
                     })
                 });
                 
                 const groqData = await groqRes.json();
-                const reply = groqData?.choices?.?.message?.content || "No response from brain.";
+                const reply = groqData?.choices?.?.message?.content || "No response.";
                 
                 output.innerText = reply;
-                
-                // Voice Response
-                const u = new SpeechSynthesisUtterance(reply);
-                u.lang = 'en-GB';
-                window.speechSynthesis.speak(u);
-                
-                status.innerText = "READY";
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance(reply));
+                status.innerText = "TAP TO START";
             } catch (e) { 
                 output.innerText = "Error: " + e.message; 
                 status.innerText = "TAP TO START";
@@ -117,6 +111,8 @@
         }
 
         btn.onclick = toggleMic;
+        // Wake up audio engine
+        document.addEventListener('touchstart', () => { window.speechSynthesis.getVoices(); }, {once: true});
     </script>
 </body>
 </html>
