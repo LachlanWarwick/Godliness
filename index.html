@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v11.2</title>
+    <title>ARTHUR v11.3</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
@@ -22,29 +22,39 @@
             padding: 40px 0; 
         }
 
-        /* --- BEGIN SCREEN OVERLAY --- */
+        /* --- FIXED SPLASH SCREEN --- */
         #splash {
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0; left: 0; 
+            width: 100vw; height: 100vh;
             background: var(--bg);
-            z-index: 1000;
+            z-index: 9999; /* Higher than everything else */
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             transition: opacity 0.5s ease;
+            pointer-events: auto; /* Ensure the splash itself can be touched */
         }
 
         #begin-btn {
-            padding: 15px 40px;
-            background: transparent;
-            border: 1px solid var(--glow);
+            padding: 20px 40px;
+            background: rgba(0, 242, 255, 0.1);
+            border: 2px solid var(--glow);
             color: var(--glow);
-            font-size: 1rem;
+            font-size: 1.2rem;
             letter-spacing: 4px;
             cursor: pointer;
-            box-shadow: 0 0 15px rgba(0,242,255,0.2);
-            border-radius: 4px;
+            box-shadow: 0 0 20px rgba(0,242,255,0.3);
+            border-radius: 8px;
+            pointer-events: auto; /* FORCE clickability */
+            z-index: 10000;
+            position: relative;
+        }
+
+        #begin-btn:active {
+            background: var(--glow);
+            color: var(--bg);
         }
 
         /* --- CORE UI --- */
@@ -80,8 +90,8 @@
 <body>
 
     <div id="splash">
-        <div style="margin-bottom: 30px; font-size: 0.8rem; letter-spacing: 5px;">ESTABLISHING LINK...</div>
-        <button id="begin-btn">INITIALIZE ARTHUR</button>
+        <div style="margin-bottom: 30px; font-size: 0.8rem; letter-spacing: 5px; color: var(--glow);">SYSTEMS OFFLINE</div>
+        <button id="begin-btn">INITIALIZE</button>
     </div>
 
     <div id="arc-reactor">
@@ -91,7 +101,7 @@
 
     <div id="display-panel">
         <div id="status">OFFLINE</div>
-        <div id="output">"Standing by, Sir."</div>
+        <div id="output">"Awaiting initialization, Sir."</div>
     </div>
 
     <script>
@@ -104,27 +114,32 @@
 
         const status = document.getElementById('status'), output = document.getElementById('output');
         const reactor = document.getElementById('arc-reactor');
+        const splash = document.getElementById('splash');
         let mediaRecorder, chunks = [];
 
         // INITIALIZE SYSTEM
-        document.getElementById('begin-btn').onclick = async () => {
-            // Wake up audio context
-            window.speechSynthesis.getVoices();
+        document.getElementById('begin-btn').addEventListener('click', async () => {
             try {
-                // Request Mic permission immediately
+                // Request Mic permission
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                stream.getTracks().forEach(t => t.stop()); // Stop it immediately after permission granted
+                stream.getTracks().forEach(t => t.stop()); 
+
+                // Hide splash
+                splash.style.pointerEvents = 'none';
+                splash.style.opacity = '0';
                 
-                document.getElementById('splash').style.opacity = '0';
-                setTimeout(() => document.getElementById('splash').remove(), 500);
+                // Wake up audio
+                window.speechSynthesis.getVoices();
+                
+                setTimeout(() => splash.remove(), 500);
                 
                 status.innerText = "NEURAL LINK ACTIVE";
                 output.innerText = "System ready. Hold the core to speak.";
                 speak("Systems online, Sir.");
             } catch (e) {
-                alert("Microphone access is required for ARTHUR to function.");
+                alert("Sir, I require microphone access to function. Please check your browser settings.");
             }
-        };
+        });
 
         async function processVoice(blob) {
             status.innerText = "LINKING...";
@@ -187,7 +202,6 @@
             window.speechSynthesis.speak(u); 
         }
 
-        // Action Handlers
         function onStart(e) { if(e.cancelable) e.preventDefault(); reactor.style.transform="scale(0.92)"; startListening(); }
         function onEnd(e) { if(e.cancelable) e.preventDefault(); reactor.style.transform="scale(1)"; if(mediaRecorder?.state === "recording") mediaRecorder.stop(); }
 
