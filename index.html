@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v8.4</title>
+    <title>ARTHUR v8.5</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
-        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; }
+        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; }
         .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
         #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
         #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px; }
-        #output { font-size: 1rem; font-style: italic; }
+        #output { font-size: 1.1rem; font-style: italic; }
         #vault-icon { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; opacity: 0.4; }
-        #config-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #001520; border: 2px solid var(--glow); padding: 30px; border-radius: 15px; width: 90%; z-index: 100; box-shadow: 0 0 50px #000; }
+        #config-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #001520; border: 2px solid var(--glow); padding: 30px; border-radius: 15px; width: 90%; z-index: 100; }
         input { width: 100%; background: #000; border: 1px solid var(--glow); color: var(--glow); margin: 10px 0; padding: 12px; font-family: monospace; border-radius: 5px; }
         button { background: var(--glow); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 5px; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -24,17 +24,17 @@
     <div id="vault-icon" onclick="toggleVault()">⚙️</div>
 
     <div id="config-panel">
-        <h3 style="margin:0; color: #fff;">HUD INITIALIZATION</h3>
+        <h3 style="margin:0; color: #fff;">SYSTEM CALIBRATION</h3>
         <input type="password" id="g-input" placeholder="Groq Key (gsk_...)">
         <input type="password" id="o-input" placeholder="OpenAI Key (sk-...)">
-        <button onclick="saveKeys()">ENGAGE NEURAL LINK</button>
+        <button onclick="saveKeys()">INITIALIZE NEURAL LINK</button>
     </div>
 
     <div id="arc-reactor"><div class="ring"></div>A</div>
 
     <div id="display-panel">
         <div id="status">READY</div>
-        <div id="output">"Standing by, Sir."</div>
+        <div id="output">"Updating model parameters, Sir."</div>
     </div>
 
     <script>
@@ -42,17 +42,16 @@
         let mediaRecorder, chunks = [];
 
         function toggleVault() { const cp = document.getElementById('config-panel'); cp.style.display = cp.style.display === 'block' ? 'none' : 'block'; }
-        
         function saveKeys() { 
             localStorage.setItem('gk', document.getElementById('g-input').value.trim()); 
             localStorage.setItem('ok', document.getElementById('o-input').value.trim()); 
             toggleVault(); 
             status.innerText = "ONLINE"; 
-            output.innerText = "Keys synced. Hold A to speak.";
+            output.innerText = "Neural Link Synchronized.";
         }
 
         async function processVoice(blob) {
-            status.innerText = "TRANSCRIBING...";
+            status.innerText = "UPLOADING...";
             const ok = localStorage.getItem('ok'), gk = localStorage.getItem('gk');
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
@@ -68,9 +67,7 @@
                 if (data.text) {
                     output.innerText = `"${data.text}"`;
                     think(data.text, gk);
-                } else {
-                    throw new Error(data.error?.message || "Transcription failed");
-                }
+                } else { throw new Error(data.error?.message || "Transcription failed"); }
             } catch(e) {
                 status.innerText = "EARS_ERROR";
                 output.innerText = "Diagnostic: " + e.message;
@@ -84,21 +81,20 @@
                     method: "POST",
                     headers: { "Authorization": `Bearer ${gk}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        model: "llama3-8b-8192", // Optimized stable model name
-                        messages: [{role:"system", content:"You are ARTHUR. Dry British wit. Max 12 words. Sir."}, {role:"user", content: text}]
+                        // V8.5 UPDATE: Using current generation model
+                        model: "llama-3.3-70b-versatile",
+                        messages: [{role:"system", content:"You are ARTHUR. A British AI squire. Formal, dry wit. Max 12 words. Address as Sir."}, {role:"user", content: text}]
                     })
                 });
                 
                 const data = await res.json();
-                
                 if (data.choices && data.choices) {
                     const reply = data.choices.message.content;
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
                 } else {
-                    // This will tell us EXACTLY what Groq is complaining about
-                    const errMsg = data.error?.message || JSON.stringify(data);
+                    const errMsg = data.error?.message || "Brain Out of Sync";
                     throw new Error(errMsg);
                 }
             } catch(e) { 
@@ -118,10 +114,7 @@
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 status.innerText = "LISTENING...";
-            } catch(e) { 
-                status.innerText = "MIC_BLOCK"; 
-                output.innerText = "Enable mic permissions, Sir.";
-            }
+            } catch(e) { status.innerText = "MIC_BLOCK"; }
         }
 
         function speak(t) { 
