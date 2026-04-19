@@ -74,7 +74,7 @@
                 const groqData = await groqRes.json();
 
                 if (groqData.choices && groqData.choices.length > 0) {
-                    const reply = groqData.choices.message[0].content;
+                    const reply = groqData.choices[0].message.content;
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
