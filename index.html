@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v12.4</title>
+    <title>ARTHUR v11.1</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
         body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
         
-        /* Initialization Screen */
+        /* Initialization Screen Overlay */
         #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
         #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 5px; cursor: pointer; box-shadow: 0 0 15px var(--glow); font-weight: bold; }
 
         #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; z-index: 5; }
         .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
         #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
-        #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; color: var(--glow); }
-        #output { font-size: 0.95rem; font-style: italic; color: #fff; margin-top: 10px; }
+        #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px; color: var(--glow); }
+        #output { font-size: 0.95rem; font-style: italic; color: #fff; word-wrap: break-word; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -31,115 +31,131 @@
 
     <div id="display-panel">
         <div id="status">OFFLINE</div>
-        <div id="output">"Awaiting initialization, Sir."</div>
+        <div id="output">"System awaiting initialization, Sir."</div>
     </div>
 
     <script>
-        const GK_A = "gsk_", GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
-        const OK_A = "sk-proj-", OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
-        const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
+        const GK_A = "gsk_";
+        const GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
+        const OK_A = "sk-proj-";
+        const OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
+
+        const F_GK = GK_A + GK_B;
+        const F_OK = OK_A + OK_B;
+
         const status = document.getElementById('status'), output = document.getElementById('output');
         let mediaRecorder, chunks = [];
 
+        // --- INITIALIZATION LOGIC ---
         document.getElementById('init-btn').addEventListener('click', async () => {
             try {
+                // Request Mic Permission
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
+                
+                // Unlock Speech Engine
                 window.speechSynthesis.getVoices();
+                const unlock = new SpeechSynthesisUtterance("");
+                window.speechSynthesis.speak(unlock);
                 
-                // Arthur speaks immediately to confirm audio is unlocked
-                speak("Arthur protocol initialized. Daniel has been bypassed, Sir.");
-                
+                // Transition UI
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => {
                     document.getElementById('init-screen').style.display = 'none';
-                    status.innerText = "SYSTEM ONLINE";
+                    status.innerText = "NEURAL LINK ACTIVE";
+                    output.innerText = "Ready for duty, Sir. Hold the core to speak.";
                 }, 500);
-            } catch (e) { alert("Permission denied."); }
+            } catch (e) {
+                alert("Microphone access is required for operation, Sir.");
+            }
         });
 
         async function processVoice(blob) {
-            status.innerText = "ANALYZING...";
+            status.innerText = "LINKING...";
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
             fd.append("model", "whisper-1");
 
             try {
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${F_OK}` },
+                    body: fd
                 });
                 const data = await res.json();
-                const text = data.text.toLowerCase();
-                output.innerText = `"${data.text}"`;
+                if (data.error) throw new Error("OpenAI: " + data.error.message);
 
-                // --- COMMANDS: OPEN APPS ---
-                if (text.includes("open ")) {
-                    const app = text.split("open ").replace(/[.?!]/g, "").trim();
-                    const links = { "spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "instagram": "instagram://", "maps": "maps://" };
-                    if (links[app]) {
-                        speak(`Opening ${app} now, Sir.`);
-                        setTimeout(() => { window.location.href = links[app]; }, 1000);
-                        return;
-                    } else {
-                        speak(`Launching ${app} shortcut, Sir.`);
-                        setTimeout(() => { window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(app)}`; }, 1000);
-                        return;
-                    }
-                }
+                output.innerText = `"${data.text}"`;
+                status.innerText = "THINKING...";
 
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
+                    headers: {
+                        "Authorization": `Bearer ${F_GK}`,
+                        "Content-Type": "application/json"
+                    },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ARTHUR. Efficient, dry British wit. Extremely formal. Address the user as 'Sir'. Max 12 words."}, {role: "user", content: data.text}]
+                        messages: [
+                            {role: "system", content: "You are ARTHUR. A digital squire. Dry British wit. Max 10 words. Sir."},
+                            {role: "user", content: data.text}
+                        ]
                     })
                 });
 
                 const groqData = await groqRes.json();
+
                 if (groqData.choices && groqData.choices.length > 0) {
-                    const reply = groqData.choices[0].message.content;
+                    const reply = groqData.choices.message.content;
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
+                } else if (groqData.error) {
+                    throw new Error("Groq: " + groqData.error.message);
                 }
-            } catch(e) { status.innerText = "ERROR"; }
+
+            } catch(e) {
+                status.innerText = "SYSTEM ERROR";
+                output.innerText = e.message;
+            }
+        }
+
+        async function startListening() {
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(s);
+                chunks = [];
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
+                mediaRecorder.start();
+                status.innerText = "LISTENING";
+            } catch(e) {
+                status.innerText = "MIC_ERROR";
+            }
         }
 
         function speak(t) {
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(t);
             const voices = window.speechSynthesis.getVoices();
+            const britishVoice = voices.find(v => v.lang.includes('en-GB'));
             
-            // --- THE SKIP DANIEL LOGIC ---
-            // 1. Get all British voices
-            const britishVoices = voices.filter(v => v.lang.includes('en-GB'));
+            // FIXED: Using voices fallback instead of the whole list
+            u.voice = britishVoice || voices; 
             
-            // 2. Filter out anyone named "Daniel"
-            const nonDanielVoices = britishVoices.filter(v => !v.name.includes('Daniel'));
-            
-            // 3. Pick the FIRST one that isn't Daniel, or the SECOND one in the general list
-            u.voice = nonDanielVoices || voices || voices[0];
-            
-            u.volume = 1.0;
-            u.rate = 0.95; 
-            u.pitch = 0.9; 
             window.speechSynthesis.speak(u);
         }
 
-        async function startListening() {
-            const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(s);
-            chunks = [];
-            mediaRecorder.ondataavailable = e => chunks.push(e.data);
-            mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
-            mediaRecorder.start();
-            status.innerText = "LISTENING...";
-        }
-
         const r = document.getElementById('arc-reactor');
-        r.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
-        r.addEventListener('touchend', (e) => { e.preventDefault(); mediaRecorder.stop(); });
+        r.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startListening();
+        }, {passive: false});
+
+        r.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
+        }, {passive: false});
     </script>
 </body>
 </html>
