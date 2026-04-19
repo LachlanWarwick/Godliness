@@ -48,7 +48,9 @@
             try {
                 // EAR (OpenAI Whisper)
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
+                    method: "POST", 
+                    headers: { "Authorization": `Bearer ${F_OK}` }, 
+                    body: fd
                 });
                 const data = await res.json();
                 if (data.error) throw new Error("OpenAI: " + data.error.message);
@@ -59,31 +61,36 @@
                 // BRAIN (Groq Llama 3)
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
+                    headers: { 
+                        "Authorization": `Bearer ${F_GK}`, 
+                        "Content-Type": "application/json" 
+                    },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role:"system", content:"You are ARTHUR. A digital squire. Dry British wit. Max 10 words. Sir."}, 
-                            {role:"user", content: data.text}
+                            {role: "system", content: "You are ARTHUR. A digital squire. Dry British wit. Max 10 words. Sir."}, 
+                            {role: "user", content: data.text}
                         ]
                     })
                 });
 
                 const groqData = await groqRes.json();
-                if (groqData.error) throw new Error("Groq: " + groqData.error.message);
-
-                // FIXED: Checking for the first index of the choices array
+                
                 if (groqData.choices && groqData.choices.length > 0) {
                     const reply = groqData.choices.message.content;
                     output.innerText = reply;
                     speak(reply);
                     status.innerText = "READY";
+                } else if (groqData.error) {
+                    throw new Error("Groq: " + groqData.error.message);
                 } else {
-                    throw new Error("Diagnostic: Brain structure mismatch.");
+                    throw new Error("Diagnostic: Brain response empty.");
                 }
+
             } catch(e) { 
                 status.innerText = "SYSTEM ERROR"; 
                 output.innerText = e.message; 
+                console.error(e);
             }
         }
 
@@ -98,24 +105,22 @@
                 status.innerText = "LISTENING";
             } catch(e) { 
                 status.innerText = "MIC_ERROR"; 
-                output.innerText = "Ensure microphone permissions are granted.";
+                output.innerText = "Check microphone permissions, Sir.";
             }
         }
 
         function speak(t) { 
             window.speechSynthesis.cancel(); 
             const u = new SpeechSynthesisUtterance(t); 
-            // Attempt to find a British voice for ARTHUR
+            // Attempt to find a British voice
             const voices = window.speechSynthesis.getVoices();
             u.voice = voices.find(v => v.lang.includes('en-GB')) || voices;
-            u.pitch = 0.9;
-            u.rate = 1.0;
             window.speechSynthesis.speak(u); 
         }
 
         const r = document.getElementById('arc-reactor');
         
-        // Touch events for mobile "Push to Talk"
+        // Mobile Touch Events
         r.addEventListener('touchstart', (e) => { 
             e.preventDefault(); 
             startListening(); 
@@ -123,13 +128,14 @@
 
         r.addEventListener('touchend', (e) => { 
             e.preventDefault(); 
-            if(mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); 
+            if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); 
         }, {passive: false});
 
-        // Initialize voices on first click (Chrome/Safari requirement)
+        // Initialize voices on first click (needed for Safari/Chrome)
         document.body.addEventListener('click', () => { 
             window.speechSynthesis.getVoices(); 
         }, {once: true});
+
     </script>
 </body>
 </html>
