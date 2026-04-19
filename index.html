@@ -3,24 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARTHUR v12.3</title>
+    <title>ARTHUR v12.5</title>
     <style>
         body { background: #000b14; color: #00f2ff; font-family: sans-serif; text-align: center; padding-top: 50px; }
         #arc-reactor { 
             width: 180px; height: 180px; 
             border: 5px solid #00f2ff; border-radius: 50%; 
             background: none; color: #00f2ff; font-size: 4rem;
-            cursor: pointer;
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
         }
         #arc-reactor:active { background: rgba(0, 242, 255, 0.2); }
-        #output { margin-top: 30px; color: white; padding: 20px; font-style: italic; }
+        #output { margin-top: 30px; color: white; padding: 20px; font-style: italic; font-size: 1.1rem; }
+        #status { font-size: 0.8rem; letter-spacing: 2px; color: #00f2ff; margin-top: 10px; }
     </style>
 </head>
 <body>
 
     <button id="arc-reactor">A</button>
-    <div id="status">UNLOCKED MODE</div>
-    <div id="output">"Tap and hold the A, Sir."</div>
+    <div id="status">INSTANT CORE ACTIVE</div>
+    <div id="output">"High-speed link established, Sir."</div>
 
     <script>
         const GK_A = "gsk_";
@@ -37,59 +38,72 @@
 
         let mediaRecorder, chunks = [];
 
-        async function start() {
+        async function processVoice(blob) {
+            status.innerText = "LINKING...";
+            const fd = new FormData();
+            fd.append("file", blob, "rec.m4a");
+            fd.append("model", "whisper-1");
+
+            try {
+                const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+                    method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
+                });
+                const data = await res.json();
+                
+                if (!data?.text) throw new Error("Whisper Error: " + (data?.error?.message || "No audio detected."));
+                output.innerText = `"${data.text}"`;
+                status.innerText = "THINKING...";
+
+                const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "llama-3.1-8b-instant", // THE FASTEST FREE MODEL
+                        messages: [{role:"system", content: "You are ARTHUR. Witty British squire. Max 10 words. Sir."}, {role:"user", content: data.text}]
+                    })
+                });
+
+                const groqData = await groqRes.json();
+                const reply = groqData?.choices?.?.message?.content;
+
+                if (reply) {
+                    output.innerText = reply;
+                    const u = new SpeechSynthesisUtterance(reply);
+                    u.lang = 'en-GB';
+                    window.speechSynthesis.speak(u);
+                    status.innerText = "READY";
+                } else {
+                    const errMsg = groqData?.error?.message || "Brain latency issue.";
+                    throw new Error("Groq: " + errMsg);
+                }
+
+            } catch (e) { 
+                status.innerText = "DIAGNOSTIC ALERT";
+                output.innerText = e.message; 
+            }
+        }
+
+        btn.ontouchstart = async (e) => {
+            e.preventDefault();
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
                 chunks = [];
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = async () => {
-                    status.innerText = "SENDING...";
-                    const blob = new Blob(chunks, { type: 'audio/mp4' });
-                    const fd = new FormData();
-                    fd.append("file", blob, "rec.m4a");
-                    fd.append("model", "whisper-1");
-
-                    try {
-                        const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                            method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
-                        });
-                        const data = await res.json();
-                        output.innerText = `"${data.text}"`;
-
-                        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                            method: "POST",
-                            headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                model: "llama-3.3-70b-versatile",
-                                messages: [{role:"system", content:"You are ARTHUR. Max 10 words. Sir."}, {role:"user", content: data.text}]
-                            })
-                        });
-                        const groqData = await groqRes.json();
-                        const reply = groqData.choices.message.content;
-                        output.innerText = reply;
-                        window.speechSynthesis.speak(new SpeechSynthesisUtterance(reply));
-                        status.innerText = "READY";
-                    } catch (e) { output.innerText = "Error: " + e.message; }
-                };
+                mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 status.innerText = "LISTENING...";
-            } catch (e) { status.innerText = "MIC ERROR"; }
-        }
+            } catch (err) { status.innerText = "MIC ERROR"; }
+        };
 
-        function stop() {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-            }
-        }
+        btn.ontouchend = (e) => {
+            e.preventDefault();
+            if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
+        };
 
-        // Standard Button Events
-        btn.onmousedown = start;
-        btn.onmouseup = stop;
-        btn.ontouchstart = start;
-        btn.ontouchend = stop;
+        btn.onmousedown = btn.ontouchstart;
+        btn.onmouseup = btn.ontouchend;
 
-        // Wake up speech synthesis
         document.addEventListener('touchstart', () => { window.speechSynthesis.getVoices(); }, {once: true});
     </script>
 </body>
