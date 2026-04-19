@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v12.2</title>
+    <title>ARTHUR v12.4</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
         body { background: var(--bg); color: var(--glow); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
+        
+        /* Initialization Screen */
         #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
         #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 5px; cursor: pointer; box-shadow: 0 0 15px var(--glow); font-weight: bold; }
-        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; }
+
+        #arc-reactor { width: 160px; height: 160px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; text-shadow: 0 0 10px var(--glow); box-shadow: inset 0 0 20px var(--glow), 0 0 15px var(--glow); cursor: pointer; position: relative; z-index: 5; }
         .ring { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-top-color: transparent; animation: spin 3s linear infinite; opacity: 0.3; }
         #display-panel { width: 85%; text-align: center; border-top: 1px solid var(--glow); padding: 20px; min-height: 150px; background: rgba(0,242,255,0.02); }
         #status { font-size: 0.7rem; letter-spacing: 3px; font-weight: bold; color: var(--glow); }
@@ -28,7 +31,7 @@
 
     <div id="display-panel">
         <div id="status">OFFLINE</div>
-        <div id="output">"Awaiting instructions, Sir."</div>
+        <div id="output">"Awaiting initialization, Sir."</div>
     </div>
 
     <script>
@@ -40,15 +43,12 @@
 
         document.getElementById('init-btn').addEventListener('click', async () => {
             try {
-                // Mic permission
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                
-                // Voice list update
                 window.speechSynthesis.getVoices();
                 
-                // Hard Audio Unlock
-                speak("Systems initialized, Sir.");
+                // Arthur speaks immediately to confirm audio is unlocked
+                speak("Arthur protocol initialized. Daniel has been bypassed, Sir.");
                 
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => {
@@ -72,6 +72,7 @@
                 const text = data.text.toLowerCase();
                 output.innerText = `"${data.text}"`;
 
+                // --- COMMANDS: OPEN APPS ---
                 if (text.includes("open ")) {
                     const app = text.split("open ").replace(/[.?!]/g, "").trim();
                     const links = { "spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "instagram": "instagram://", "maps": "maps://" };
@@ -80,7 +81,7 @@
                         setTimeout(() => { window.location.href = links[app]; }, 1000);
                         return;
                     } else {
-                        speak(`Launching ${app} via shortcut, Sir.`);
+                        speak(`Launching ${app} shortcut, Sir.`);
                         setTimeout(() => { window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(app)}`; }, 1000);
                         return;
                     }
@@ -91,15 +92,17 @@
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ARTHUR. Efficient, dry British wit. Extremely formal. Address the user as 'Sir'. Keep responses under 12 words."}, {role: "user", content: data.text}]
+                        messages: [{role: "system", content: "You are ARTHUR. Efficient, dry British wit. Extremely formal. Address the user as 'Sir'. Max 12 words."}, {role: "user", content: data.text}]
                     })
                 });
 
                 const groqData = await groqRes.json();
-                const reply = groqData.choices[0].message.content;
-                output.innerText = reply;
-                speak(reply);
-                status.innerText = "READY";
+                if (groqData.choices && groqData.choices.length > 0) {
+                    const reply = groqData.choices[0].message.content;
+                    output.innerText = reply;
+                    speak(reply);
+                    status.innerText = "READY";
+                }
             } catch(e) { status.innerText = "ERROR"; }
         }
 
@@ -107,10 +110,17 @@
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(t);
             const voices = window.speechSynthesis.getVoices();
-            const jamie = voices.find(v => v.name.includes('Jamie'));
-            const daniel = voices.find(v => v.name.includes('Daniel'));
             
-            u.voice = jamie || daniel || voices.find(v => v.lang.includes('en-GB')) || voices[0];
+            // --- THE SKIP DANIEL LOGIC ---
+            // 1. Get all British voices
+            const britishVoices = voices.filter(v => v.lang.includes('en-GB'));
+            
+            // 2. Filter out anyone named "Daniel"
+            const nonDanielVoices = britishVoices.filter(v => !v.name.includes('Daniel'));
+            
+            // 3. Pick the FIRST one that isn't Daniel, or the SECOND one in the general list
+            u.voice = nonDanielVoices || voices || voices[0];
+            
             u.volume = 1.0;
             u.rate = 0.95; 
             u.pitch = 0.9; 
