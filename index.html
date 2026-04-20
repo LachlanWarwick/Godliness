@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v13.5 - MATH & POWER</title>
+    <title>ARTHUR v14.0 - ADVANCED COMMAND</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
         body { background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
-        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.5s; }
         #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); font-size: 1.2rem; }
         #arc-reactor { width: 180px; height: 180px; border: 1px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 15px var(--glow); box-shadow: inset 0 0 30px var(--hologram), 0 0 20px var(--hologram); cursor: pointer; position: relative; z-index: 5; transition: all 0.3s; }
         #arc-reactor.active { box-shadow: inset 0 0 50px var(--glow), 0 0 30px var(--glow); transform: scale(1.05); }
@@ -51,36 +51,28 @@
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             const ctx = new AudioContext();
             ctx.resume();
-            const prime = new SpeechSynthesisUtterance("");
-            window.speechSynthesis.speak(prime);
-
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                speak("ARTHUR v13.5 online. Math and Power modules active, Sir.");
+                speak("Systems integrated. Location and Command modules are live, Sir.");
                 document.getElementById('init-screen').style.opacity = '0';
-                setTimeout(() => { 
-                    document.getElementById('init-screen').style.display = 'none'; 
-                    status.innerText = "LINK ACTIVE";
-                }, 800);
-            } catch (e) { alert("Microphone access is mandatory, Sir."); }
+                setTimeout(() => { document.getElementById('init-screen').style.display = 'none'; status.innerText = "LINK ACTIVE"; }, 500);
+            } catch (e) { alert("Permission denied, Sir."); }
         });
 
         function speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            const british = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB');
-            msg.voice = british || voices.find(v => v.lang.startsWith('en')) || voices[0];
+            msg.voice = voices.find(v => v.lang.includes('GB')) || voices[0];
             msg.rate = 0.9;
-            msg.volume = 1.0;
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
         }
 
         async function processVoice(blob) {
-            status.innerText = "PROCESSING...";
+            status.innerText = "ANALYZING...";
             reactor.classList.remove('listening');
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
@@ -91,44 +83,60 @@
                     method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
-                const cmd = data.text.toLowerCase();
+                const cmd = data.text.toLowerCase().trim();
                 output.innerText = `"${data.text}"`;
 
-                // --- HARDCODED LOGIC ---
-                if (cmd.includes("time")) {
-                    const now = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    const reply = `The time is precisely ${now}, Sir.`;
-                    output.innerText = reply; speak(reply); status.innerText = "READY"; return;
+                // --- 1. SHORTCUTS & APPS ---
+                if (cmd.includes("run shortcut")) {
+                    let shortcut = cmd.replace("run shortcut", "").trim();
+                    speak(`Launching ${shortcut} shortcut, Sir.`);
+                    window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcut)}`;
+                    return;
                 }
-
-                if (cmd.includes("battery") || cmd.includes("power level")) {
-                    const bat = await navigator.getBattery();
-                    const level = Math.round(bat.level * 100);
-                    const reply = `Power cells are at ${level} percent, Sir.`;
-                    output.innerText = reply; speak(reply); status.innerText = "READY"; return;
-                }
-
+                
                 if (cmd.includes("open") || cmd.includes("launch")) {
-                    const apps = {"spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "instagram": "instagram://", "music": "music://"};
+                    const apps = {"spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "music": "music://", "instagram": "instagram://"};
                     for (let app in apps) {
-                        if (cmd.includes(app)) {
-                            speak(`Opening ${app}, Sir.`);
-                            window.location.href = apps[app];
-                            return;
-                        }
+                        if (cmd.includes(app)) { speak(`Opening ${app}, Sir.`); window.location.href = apps[app]; return; }
                     }
                 }
 
-                // --- AI INTELLIGENCE (MATH & GENERAL) ---
+                // --- 2. LOCATION & WEATHER ---
+                if (cmd.includes("where am i") || cmd.includes("location") || cmd.includes("weather")) {
+                    navigator.geolocation.getCurrentPosition(async (pos) => {
+                        const lat = pos.coords.latitude.toFixed(2);
+                        const lon = pos.coords.longitude.toFixed(2);
+                        if (cmd.includes("weather")) {
+                            const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+                            const wData = await wRes.json();
+                            speak(`The current temperature is ${wData.current_weather.temperature} degrees, Sir.`);
+                        } else {
+                            speak(`You are currently at coordinates ${lat} latitude and ${lon} longitude, Sir.`);
+                        }
+                    });
+                    return;
+                }
+
+                // --- 3. BATTERY & TIME ---
+                if (cmd.includes("battery")) {
+                    const bat = await navigator.getBattery();
+                    speak(`Power levels are at ${Math.round(bat.level * 100)} percent, Sir.`);
+                    return;
+                }
+                if (cmd.includes("time")) {
+                    speak(`The time is ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}, Sir.`);
+                    return;
+                }
+
+                // --- 4. BRAIN (MATH/LOGIC) ---
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ARTHUR, a loyal British AI butler. You are excellent at math and logic. Keep responses concise and under 25 words."}, {role: "user", content: data.text}]
+                        messages: [{role: "system", content: "You are ARTHUR, a British AI butler. You excel at math and logic. Keep responses under 25 words."}, {role: "user", content: data.text}]
                     })
                 });
-
                 const groqData = await groqRes.json();
                 const reply = groqData.choices[0].message.content;
                 output.innerText = reply;
@@ -152,8 +160,6 @@
 
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
         reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
-        reactor.addEventListener('mousedown', startListening);
-        reactor.addEventListener('mouseup', () => { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
         window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     </script>
 </body>
