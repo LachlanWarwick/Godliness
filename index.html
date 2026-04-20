@@ -20,15 +20,12 @@
         .mode-btn { background: transparent; border: 1px solid var(--hologram); color: var(--glow); font-size: 0.55rem; padding: 4px 8px; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
         .mode-btn.on { border-color: var(--glow); box-shadow: 0 0 8px var(--glow); }
         #log-container { width: 100%; height: 110px; background: rgba(0, 0, 0, 0.7); border-top: 1px solid var(--hologram); overflow-y: auto; padding: 10px; font-family: monospace; font-size: 0.6rem; color: var(--glow); opacity: 0.7; }
-        body.combat { --glow: var(--red); --hologram: rgba(255, 60, 60, 0.1); }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div id="init-screen">
-        <button id="init-btn">Initialize</button>
-    </div>
+    <div id="init-screen"><button id="init-btn">Initialize</button></div>
 
     <div id="main-container">
         <div id="controls">
@@ -36,7 +33,7 @@
             <button id="brief-btn" class="mode-btn">BRIEFING</button>
         </div>
         <div id="arc-reactor"><div class="ring"></div>A</div>
-        <div id="display-panel"><div id="output">"Alfred de butler Standing By, Sir."</div></div>
+        <div id="display-panel"><div id="output">"Alfred Standing By, Sir."</div></div>
     </div>
 
     <div id="log-container"></div>
@@ -48,7 +45,7 @@
 
         const output = document.getElementById('output'), reactor = document.getElementById('arc-reactor'), logBox = document.getElementById('log-container'), autoBtn = document.getElementById('auto-mode');
         let mediaRecorder, chunks = [], isAuto = false, history = [];
-        let userName = localStorage.getItem('alfredUser') || "Sir";
+        let userName = "Sir";
         let userNotes = JSON.parse(localStorage.getItem('alfredNotes')) || [];
 
         function addLog(msg) {
@@ -61,19 +58,15 @@
 
         document.getElementById('init-btn').onclick = async () => {
             const ctx = new (window.AudioContext || window.webkitAudioContext)(); ctx.resume();
-            window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
-            try {
-                await navigator.mediaDevices.getUserMedia({ audio: true });
-                speak(`Omni protocol active. How may I assist you, ${userName}?`);
-                document.getElementById('init-screen').style.display = 'none';
-            } catch (e) { alert("Mic required."); }
+            speak("Omni protocol active. How may I assist you?");
+            document.getElementById('init-screen').style.display = 'none';
         };
 
         function speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            msg.voice = voices.find(v => v.lang.includes('GB')) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+            msg.voice = voices.find(v => v.lang.includes('GB')) || voices[0];
             msg.rate = 0.9;
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => { 
@@ -83,11 +76,34 @@
             window.speechSynthesis.speak(msg);
             addLog(`ALFRED: ${text}`);
             history.push({role: "assistant", content: text});
-            if(history.length > 8) history.shift();
+        }
+
+        async function runBriefing() {
+            output.innerText = "Accessing systems...";
+            try {
+                // Time
+                const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                // Battery
+                const bat = await navigator.getBattery();
+                const bLevel = Math.round(bat.level * 100);
+                
+                // Location & Weather
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`);
+                    const wData = await wRes.json();
+                    const temp = Math.round(wData.current_weather.temperature);
+                    
+                    let brief = `Good day. It is ${time}. Battery is at ${bLevel} percent. Outside it is ${temp} degrees.`;
+                    if(userNotes.length > 0) brief += ` Reminder: ${userNotes[userNotes.length-1]}.`;
+                    speak(brief);
+                }, () => {
+                    speak(`It is ${time}. Battery ${bLevel} percent. I cannot access location for weather.`);
+                });
+            } catch(e) { speak("Briefing failed. Local permissions required."); }
         }
 
         async function processVoice(blob) {
-            output.innerText = "Analyzing...";
+            output.innerText = "Processing...";
             const fd = new FormData(); fd.append("file", blob, "audio.m4a"); fd.append("model", "whisper-1");
             try {
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
@@ -98,68 +114,39 @@
                 addLog(`USER: ${cmd}`);
                 history.push({role: "user", content: data.text});
 
-                // 1. DEEP LINK MEDIA
-                if (cmd.includes("play") && cmd.includes("spotify")) {
-                    const query = cmd.replace(/play|on spotify/g, "").trim();
-                    speak(`Playing ${query} on Spotify.`);
-                    window.location.href = `spotify:search:${encodeURIComponent(query)}`; return;
+                // DIRECT HARDWARE COMMANDS
+                if (cmd.includes("time")) {
+                    speak(`The time is ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}.`);
+                    return;
                 }
-                if (cmd.includes("search youtube for")) {
-                    const query = cmd.split("for").trim();
-                    speak(`Searching YouTube for ${query}.`);
-                    window.location.href = `youtube://results?search_query=${encodeURIComponent(query)}`; return;
-                }
-
-                // 2. MEMORY MODULE
-                if (cmd.includes("remember that")) {
-                    const note = cmd.replace("remember that", "").trim();
-                    userNotes.push(note);
-                    localStorage.setItem('alfredNotes', JSON.stringify(userNotes));
-                    speak(`Understood. I have added that to your logs.`); return;
-                }
-                if (cmd.includes("forget my notes")) {
-                    userNotes = []; localStorage.removeItem('alfredNotes');
-                    speak("Memory cleared, Sir."); return;
-                }
-
-                // 3. DAILY BRIEFING
-                if (cmd.includes("briefing") || cmd.includes("my day")) {
+                if (cmd.includes("battery")) {
                     const bat = await navigator.getBattery();
-                    navigator.geolocation.getCurrentPosition(async (pos) => {
-                        const w = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`)).json();
-                        let brief = `Good day, ${userName}. It is ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}. Battery is at ${Math.round(bat.level*100)} percent. It is currently ${w.current_weather.temperature} degrees outside. `;
-                        if(userNotes.length > 0) brief += `A reminder: you asked me to remember: ${userNotes[userNotes.length-1]}.`;
-                        speak(brief);
-                    }); return;
+                    speak(`Battery level is ${Math.round(bat.level * 100)} percent.`);
+                    return;
+                }
+                if (cmd.includes("briefing") || cmd.includes("my day")) {
+                    runBriefing(); return;
                 }
 
-                // 4. NEWS MODULE
-                if (cmd.includes("news") || cmd.includes("headlines")) {
-                    speak("Fetching the latest headlines.");
-                    const news = await (await fetch('https://api.rss2json.com/v1/api.json?rss_url=http://feeds.bbci.co.uk/news/rss.xml')).json();
-                    speak(`Top story: ${news.items.title}. Second: ${news.items.title}.`); return;
-                }
-
-                // 5. SHORTCUTS
+                // SHORTCUTS / APPS
                 if (cmd.startsWith("run ")) {
-                    const sName = data.text.replace(/run/i, "").trim();
-                    speak(`Launching ${sName}.`);
+                    const sName = cmd.replace("run ", "").trim();
+                    speak(`Executing ${sName}.`);
                     window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(sName)}`; return;
                 }
 
-                // 6. GENERAL BRAIN (Math, Conversion, Chat)
+                // BRAIN
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST", headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: `You are ALFRED, an AI butler for Lachlan Warwick. Use current context. Speak in 25 words or less, unless giving details. User is ${userName}. Notes: ${userNotes.join(', ')}.`}, ...history]
+                        messages: [{role: "system", content: "You are ALFRED, a polite British AI butler. Be concise."}, ...history]
                     })
                 });
                 const gData = await groqRes.json();
                 const reply = gData.choices[0].message.content;
                 output.innerText = reply; speak(reply);
-
-            } catch(e) { output.innerText = "Protocol Error."; }
+            } catch(e) { output.innerText = "Comms Error."; }
         }
 
         async function startListening() {
@@ -175,7 +162,7 @@
 
         reactor.onmousedown = reactor.ontouchstart = (e) => { e.preventDefault(); if(!isAuto) startListening(); };
         reactor.onmouseup = reactor.ontouchend = (e) => { e.preventDefault(); if(!isAuto && mediaRecorder?.state === "recording") mediaRecorder.stop(); };
-        document.getElementById('brief-btn').onclick = () => { processVoice(new Blob([], {type: 'audio/mp4'})); /* Trigger via internal logic */ speak("Ready for briefing."); };
+        document.getElementById('brief-btn').onclick = () => runBriefing();
     </script>
 </body>
 </html>
