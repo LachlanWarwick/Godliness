@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v13.0 - COMMAND PRO</title>
+    <title>ARTHUR v13.5 - MATH & POWER</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
@@ -57,7 +57,7 @@
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                speak("The ARTHUR protocol is online. Commands enabled, Sir.");
+                speak("ARTHUR v13.5 online. Math and Power modules active, Sir.");
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => { 
                     document.getElementById('init-screen').style.display = 'none'; 
@@ -94,43 +94,38 @@
                 const cmd = data.text.toLowerCase();
                 output.innerText = `"${data.text}"`;
 
-                // --- HARDCODED LOGIC FOR ACCURACY ---
+                // --- HARDCODED LOGIC ---
                 if (cmd.includes("time")) {
                     const now = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    const reply = `It is currently ${now}, Sir.`;
-                    output.innerText = reply;
-                    speak(reply);
-                    status.innerText = "READY";
-                    return;
+                    const reply = `The time is precisely ${now}, Sir.`;
+                    output.innerText = reply; speak(reply); status.innerText = "READY"; return;
+                }
+
+                if (cmd.includes("battery") || cmd.includes("power level")) {
+                    const bat = await navigator.getBattery();
+                    const level = Math.round(bat.level * 100);
+                    const reply = `Power cells are at ${level} percent, Sir.`;
+                    output.innerText = reply; speak(reply); status.innerText = "READY"; return;
                 }
 
                 if (cmd.includes("open") || cmd.includes("launch")) {
                     const apps = {"spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "instagram": "instagram://", "music": "music://"};
                     for (let app in apps) {
                         if (cmd.includes(app)) {
-                            speak(`Opening ${app} now, Sir.`);
+                            speak(`Opening ${app}, Sir.`);
                             window.location.href = apps[app];
                             return;
                         }
                     }
                 }
 
-                if (cmd.includes("run shortcut")) {
-                    const shortcutName = cmd.split("run shortcut").trim();
-                    if (shortcutName) {
-                        speak(`Executing shortcut: ${shortcutName}, Sir.`);
-                        window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`;
-                        return;
-                    }
-                }
-
-                // --- GENERAL INTELLIGENCE ---
+                // --- AI INTELLIGENCE (MATH & GENERAL) ---
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ARTHUR, a loyal British AI butler. Keep responses under 20 words."}, {role: "user", content: data.text}]
+                        messages: [{role: "system", content: "You are ARTHUR, a loyal British AI butler. You are excellent at math and logic. Keep responses concise and under 25 words."}, {role: "user", content: data.text}]
                     })
                 });
 
