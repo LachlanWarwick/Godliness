@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v25.0 - DIRECT COMMAND</title>
+    <title>ALFRED v26.0 - OMNI PROTOCOL</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); --red: #ff3c3c; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
         body { background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; height: 100vh; margin: 0; overflow: hidden; transition: 0.5s; }
         #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.8s; }
         #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); }
-        #main-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; gap: 20px; }
-        #arc-reactor { width: 150px; height: 150px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 15px var(--glow); box-shadow: inset 0 0 30px var(--hologram); cursor: pointer; position: relative; transition: 0.3s; }
+        #main-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; gap: 15px; }
+        #arc-reactor { width: 140px; height: 140px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; text-shadow: 0 0 15px var(--glow); box-shadow: inset 0 0 30px var(--hologram); cursor: pointer; position: relative; transition: 0.3s; z-index: 5; }
         #arc-reactor.active { box-shadow: inset 0 0 60px var(--glow), 0 0 40px var(--glow); transform: scale(1.05); }
-        .ring { position: absolute; width: 120%; height: 120%; border: 1px solid var(--hologram); border-radius: 50%; border-top: 2px solid var(--glow); animation: spin 4s linear infinite; }
-        #display-panel { width: 90%; text-align: center; }
-        #output { font-size: 0.95rem; font-weight: 300; min-height: 45px; font-style: italic; color: #e0faff; padding: 0 10px; }
-        #controls { display: flex; gap: 10px; margin-bottom: 10px; }
-        .mode-btn { background: transparent; border: 1px solid var(--hologram); color: var(--glow); font-size: 0.6rem; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
-        .mode-btn.on { border-color: var(--glow); box-shadow: 0 0 10px var(--glow); }
-        #log-container { width: 100%; height: 120px; background: rgba(0, 0, 0, 0.6); border-top: 1px solid var(--hologram); overflow-y: auto; padding: 12px; font-family: monospace; font-size: 0.65rem; color: var(--glow); opacity: 0.8; }
+        .ring { position: absolute; width: 125%; height: 125%; border: 1px solid var(--hologram); border-radius: 50%; border-top: 2px solid var(--glow); animation: spin 4s linear infinite; }
+        #display-panel { width: 90%; text-align: center; z-index: 5; }
+        #output { font-size: 0.9rem; font-weight: 300; min-height: 50px; font-style: italic; color: #e0faff; padding: 0 10px; }
+        #controls { display: flex; gap: 8px; margin-bottom: 5px; }
+        .mode-btn { background: transparent; border: 1px solid var(--hologram); color: var(--glow); font-size: 0.55rem; padding: 4px 8px; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+        .mode-btn.on { border-color: var(--glow); box-shadow: 0 0 8px var(--glow); }
+        #log-container { width: 100%; height: 110px; background: rgba(0, 0, 0, 0.7); border-top: 1px solid var(--hologram); overflow-y: auto; padding: 10px; font-family: monospace; font-size: 0.6rem; color: var(--glow); opacity: 0.7; }
         body.combat { --glow: var(--red); --hologram: rgba(255, 60, 60, 0.1); }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
@@ -27,15 +27,16 @@
 <body>
 
     <div id="init-screen">
-        <button id="init-btn">Initialize ALFRED v25</button>
+        <button id="init-btn">Initialize ALFRED v26</button>
     </div>
 
     <div id="main-container">
         <div id="controls">
             <button id="auto-mode" class="mode-btn">CONTINUOUS: OFF</button>
+            <button id="brief-btn" class="mode-btn">BRIEFING</button>
         </div>
         <div id="arc-reactor"><div class="ring"></div>A</div>
-        <div id="display-panel"><div id="output">"Awaiting direct command, Sir."</div></div>
+        <div id="display-panel"><div id="output">"Omni-Protocol Standing By, Sir."</div></div>
     </div>
 
     <div id="log-container"></div>
@@ -48,6 +49,7 @@
         const output = document.getElementById('output'), reactor = document.getElementById('arc-reactor'), logBox = document.getElementById('log-container'), autoBtn = document.getElementById('auto-mode');
         let mediaRecorder, chunks = [], isAuto = false, history = [];
         let userName = localStorage.getItem('alfredUser') || "Sir";
+        let userNotes = JSON.parse(localStorage.getItem('alfredNotes')) || [];
 
         function addLog(msg) {
             const entry = document.createElement('div');
@@ -62,7 +64,7 @@
             window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
             try {
                 await navigator.mediaDevices.getUserMedia({ audio: true });
-                speak(`ALFRED v25 online. Direct command protocol active, ${userName}.`);
+                speak(`Omni protocol active. How may I assist you, ${userName}?`);
                 document.getElementById('init-screen').style.display = 'none';
             } catch (e) { alert("Mic required."); }
         };
@@ -76,12 +78,12 @@
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => { 
                 reactor.classList.remove('active');
-                if(isAuto) setTimeout(startListening, 500); 
+                if(isAuto) setTimeout(startListening, 600); 
             };
             window.speechSynthesis.speak(msg);
             addLog(`ALFRED: ${text}`);
             history.push({role: "assistant", content: text});
-            if(history.length > 6) history.shift();
+            if(history.length > 8) history.shift();
         }
 
         async function processVoice(blob) {
@@ -96,51 +98,68 @@
                 addLog(`USER: ${cmd}`);
                 history.push({role: "user", content: data.text});
 
-                // 1. DIRECT SHORTCUT RUNNER (New Logic)
-                if (cmd.startsWith("run ")) {
-                    const shortcutName = data.text.replace(/run/i, "").trim();
-                    speak(`Executing ${shortcutName}, Sir.`);
-                    window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`;
-                    return;
+                // 1. DEEP LINK MEDIA
+                if (cmd.includes("play") && cmd.includes("spotify")) {
+                    const query = cmd.replace(/play|on spotify/g, "").trim();
+                    speak(`Playing ${query} on Spotify.`);
+                    window.location.href = `spotify:search:${encodeURIComponent(query)}`; return;
+                }
+                if (cmd.includes("search youtube for")) {
+                    const query = cmd.split("for").trim();
+                    speak(`Searching YouTube for ${query}.`);
+                    window.location.href = `youtube://results?search_query=${encodeURIComponent(query)}`; return;
                 }
 
-                // 2. MATH & CONTEXT PRIORITY
-                const isMath = /[\d]|\b(plus|minus|times|divided|multiplied)\b/.test(cmd);
-                const isGeneral = !cmd.includes("open") && !cmd.includes("launch") && !cmd.includes("location") && !cmd.includes("weather") && !cmd.includes("time") && !cmd.includes("battery") && !cmd.includes("combat") && !cmd.includes("stand down");
-
-                if (isMath || isGeneral || cmd.length < 5) {
-                    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                        method: "POST", headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            model: "llama-3.3-70b-versatile",
-                            messages: [{role: "system", content: `You are ALFRED. British butler. User is ${userName}. Use short, conversational memory.`}, ...history]
-                        })
-                    });
-                    const gData = await groqRes.json();
-                    const reply = gData.choices[0].message.content;
-                    output.innerText = reply; speak(reply); return;
+                // 2. MEMORY MODULE
+                if (cmd.includes("remember that")) {
+                    const note = cmd.replace("remember that", "").trim();
+                    userNotes.push(note);
+                    localStorage.setItem('alfredNotes', JSON.stringify(userNotes));
+                    speak(`Understood. I have added that to your logs.`); return;
+                }
+                if (cmd.includes("forget my notes")) {
+                    userNotes = []; localStorage.removeItem('alfredNotes');
+                    speak("Memory cleared, Sir."); return;
                 }
 
-                // 3. LEGACY COMMANDS
-                if (cmd.includes("open") || cmd.includes("launch")) {
-                    const apps = {"spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "instagram": "instagram://", "music": "music://"};
-                    for (let app in apps) if (cmd.includes(app)) { speak(`Opening ${app}.`); window.location.href = apps[app]; return; }
-                }
-                if (cmd.includes("combat mode")) { document.body.classList.add('combat'); speak("Combat mode engaged."); return; }
-                if (cmd.includes("stand down")) { document.body.classList.remove('combat'); speak("Standing down."); return; }
-                if (cmd.includes("time") && !isMath) {
-                    speak(`The time is ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}.`); return;
-                }
-                if (cmd.includes("location") || cmd.includes("weather")) {
+                // 3. DAILY BRIEFING
+                if (cmd.includes("briefing") || cmd.includes("my day")) {
+                    const bat = await navigator.getBattery();
                     navigator.geolocation.getCurrentPosition(async (pos) => {
-                        const lat = pos.coords.latitude, lon = pos.coords.longitude;
-                        if (cmd.includes("weather")) {
-                            const w = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)).json();
-                            speak(`It is ${w.current_weather.temperature} degrees.`);
-                        } else speak(`Coordinates: ${lat.toFixed(2)}, ${lon.toFixed(2)}.`);
+                        const w = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`)).json();
+                        let brief = `Good day, ${userName}. It is ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}. Battery is at ${Math.round(bat.level*100)} percent. It is currently ${w.current_weather.temperature} degrees outside. `;
+                        if(userNotes.length > 0) brief += `A reminder: you asked me to remember: ${userNotes[userNotes.length-1]}.`;
+                        speak(brief);
                     }); return;
                 }
-            } catch(e) { output.innerText = "Error."; }
+
+                // 4. NEWS MODULE
+                if (cmd.includes("news") || cmd.includes("headlines")) {
+                    speak("Fetching the latest headlines.");
+                    const news = await (await fetch('https://api.rss2json.com/v1/api.json?rss_url=http://feeds.bbci.co.uk/news/rss.xml')).json();
+                    speak(`Top story: ${news.items.title}. Second: ${news.items.title}.`); return;
+                }
+
+                // 5. SHORTCUTS
+                if (cmd.startsWith("run ")) {
+                    const sName = data.text.replace(/run/i, "").trim();
+                    speak(`Launching ${sName}.`);
+                    window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(sName)}`; return;
+                }
+
+                // 6. GENERAL BRAIN (Math, Conversion, Chat)
+                const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST", headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [{role: "system", content: `You are ALFRED, a British butler. Use current context. User is ${userName}. Notes: ${userNotes.join(', ')}.`}, ...history]
+                    })
+                });
+                const gData = await groqRes.json();
+                const reply = gData.choices[0].message.content;
+                output.innerText = reply; speak(reply);
+
+            } catch(e) { output.innerText = "Protocol Error."; }
         }
 
         async function startListening() {
@@ -156,6 +175,7 @@
 
         reactor.onmousedown = reactor.ontouchstart = (e) => { e.preventDefault(); if(!isAuto) startListening(); };
         reactor.onmouseup = reactor.ontouchend = (e) => { e.preventDefault(); if(!isAuto && mediaRecorder?.state === "recording") mediaRecorder.stop(); };
+        document.getElementById('brief-btn').onclick = () => { processVoice(new Blob([], {type: 'audio/mp4'})); /* Trigger via internal logic */ speak("Ready for briefing."); };
     </script>
 </body>
 </html>
