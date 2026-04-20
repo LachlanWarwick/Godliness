@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARTHUR v17.0 - OMNI-PROTOCOL</title>
+    <title>ALFRED v18.0 - OMNI-PROTOCOL</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); --red: #ff3c3c; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
@@ -13,7 +13,7 @@
         #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); }
 
         #main-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; gap: 20px; padding-top: 20px; }
-        #arc-reactor { width: 150px; height: 150px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 15px var(--glow); box-shadow: inset 0 0 30px var(--hologram); cursor: pointer; position: relative; transition: 0.3s; z-index: 10; }
+        #arc-reactor { width: 150px; height: 150px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 15px var(--glow); box-shadow: inset 0 0 30px var(--hologram); cursor: pointer; position: relative; z-index: 10; transition: 0.3s; }
         #arc-reactor.active { box-shadow: inset 0 0 60px var(--glow), 0 0 40px var(--glow); transform: scale(1.05); }
         
         .ring { position: absolute; width: 120%; height: 120%; border: 1px solid var(--hologram); border-radius: 50%; border-top: 2px solid var(--glow); animation: spin 4s linear infinite; }
@@ -23,7 +23,7 @@
         #display-panel { width: 90%; text-align: center; }
         #output { font-size: 0.95rem; font-weight: 300; min-height: 45px; font-style: italic; color: #e0faff; padding: 0 10px; }
 
-        #log-container { width: 100%; height: 140px; background: rgba(0, 0, 0, 0.6); border-top: 1px solid var(--hologram); overflow-y: auto; padding: 12px; font-family: monospace; font-size: 0.65rem; color: var(--glow); opacity: 0.8; scroll-behavior: smooth; }
+        #log-container { width: 100%; height: 140px; background: rgba(0, 0, 0, 0.6); border-top: 1px solid var(--hologram); overflow-y: auto; padding: 12px; font-family: monospace; font-size: 0.65rem; color: var(--glow); opacity: 0.8; }
         
         body.combat { --glow: var(--red); --hologram: rgba(255, 60, 60, 0.1); }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -33,7 +33,7 @@
 <body>
 
     <div id="init-screen">
-        <button id="init-btn">Initialize ALFRED v17</button>
+        <button id="init-btn">Initialize ALFRED v18</button>
     </div>
 
     <div id="main-container">
@@ -47,7 +47,7 @@
         </div>
     </div>
 
-    <div id="log-container">[SYSTEM] DATA LOG READY...</div>
+    <div id="log-container">[SYSTEM] ALFRED LOG ACTIVE...</div>
 
     <script>
         const GK_A = "gsk_", GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
@@ -56,7 +56,7 @@
 
         const output = document.getElementById('output'), reactor = document.getElementById('arc-reactor'), logBox = document.getElementById('log-container');
         let mediaRecorder, chunks = [];
-        let userName = localStorage.getItem('arthurName') || "Sir";
+        let userName = localStorage.getItem('alfredUser') || "Sir";
 
         function addLog(msg) {
             const entry = document.createElement('div');
@@ -65,30 +65,33 @@
         }
 
         document.getElementById('init-btn').addEventListener('click', async () => {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            const ctx = new AudioContext();
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
             ctx.resume();
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                speak(`Omni-protocol active. Welcome back, ${userName}.`);
+                speak(`ALFRED protocol active. Welcome back, ${userName}.`);
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => { document.getElementById('init-screen').style.display = 'none'; }, 600);
-            } catch (e) { alert("Mic required for vocal interface, Sir."); }
+            } catch (e) { alert("Microphone access is required, Sir."); }
         });
 
         function speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            // Force English GB for the butler feel
-            msg.voice = voices.find(v => v.lang.includes('GB')) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+
+            // REVERTED: BASIC BRITISH CAPTURE
+            let selectedVoice = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB');
+            if (!selectedVoice) selectedVoice = voices.find(v => v.lang.startsWith('en'));
+            
+            msg.voice = selectedVoice || voices[0];
             msg.rate = 0.95;
             msg.volume = 1.0;
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
-            addLog(`ARTHUR: ${text}`);
+            addLog(`ALFRED: ${text}`);
         }
 
         async function processVoice(blob) {
@@ -106,28 +109,28 @@
                 const cmd = data.text.toLowerCase().trim();
                 addLog(`USER: ${cmd}`);
 
-                // --- 1. CORE LOGIC (Math, Name, Combat) ---
-                if (cmd.includes("combat mode")) { document.body.classList.add('combat'); speak("Combat mode engaged."); return; }
-                if (cmd.includes("stand down")) { document.body.classList.remove('combat'); speak("Standing down."); return; }
+                // 1. SYSTEM COMMANDS
+                if (cmd.includes("combat mode")) { document.body.classList.add('combat'); speak("Combat mode engaged. Prepared for action."); return; }
+                if (cmd.includes("stand down")) { document.body.classList.remove('combat'); speak("Nominal status restored."); return; }
                 if (cmd.includes("my name is")) {
                     userName = data.text.split(/is/i).trim().replace(/[.?!]/g, "");
-                    localStorage.setItem('arthurName', userName);
-                    speak(`Identity confirmed. Hello, ${userName}.`); return;
+                    localStorage.setItem('alfredUser', userName);
+                    speak(`Identity confirmed. It is a pleasure, ${userName}.`); return;
                 }
 
-                // --- 2. TIMERS & ALARMS ---
+                // 2. TIMERS & ALARMS
                 if (cmd.includes("timer for")) {
                     const num = parseInt(cmd.match(/\d+/));
                     if (num) {
-                        speak(`Timer set for ${num} minutes, ${userName}.`);
+                        speak(`Timer set for ${num} minutes.`);
                         setTimeout(() => speak(`Sir, your ${num} minute timer has concluded.`), num * 60000);
                         return;
                     }
                 }
 
-                // --- 3. WIKIPEDIA & APPS ---
+                // 3. WIKIPEDIA
                 if (cmd.includes("who is") || cmd.includes("what is") || cmd.includes("search")) {
-                    const query = cmd.replace(/who is|what is|search for|search/g, "").trim();
+                    const query = cmd.replace(/who is|what is|search/g, "").trim();
                     const wRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`);
                     const wData = await wRes.json();
                     if (wData.extract) {
@@ -136,34 +139,29 @@
                     }
                 }
 
+                // 4. UTILITIES (Location, Battery, Shortcuts)
+                if (cmd.includes("battery")) {
+                    const bat = await navigator.getBattery();
+                    speak(`Power levels are at ${Math.round(bat.level * 100)} percent, Sir.`); return;
+                }
+
                 if (cmd.includes("run shortcut")) {
                     const s = cmd.replace("run shortcut", "").trim();
                     speak(`Executing ${s}.`);
                     window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(s)}`; return;
                 }
 
-                // --- 4. GPS & WEATHER ---
-                if (cmd.includes("location") || cmd.includes("weather")) {
-                    navigator.geolocation.getCurrentPosition(async (pos) => {
-                        if (cmd.includes("weather")) {
-                            const w = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`)).json();
-                            speak(`It is currently ${w.current_weather.temperature} degrees.`);
-                        } else speak(`Coordinates: ${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)}.`);
-                    }); return;
-                }
-
-                // --- 5. TIME & BRAIN ---
                 if (cmd.includes("time")) {
-                    speak(`It is ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}, ${userName}.`);
-                    return;
+                    speak(`The time is ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}, ${userName}.`); return;
                 }
 
+                // 5. BRAIN (Groq)
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: `You are ARTHUR, a British butler AI. User is ${userName}. Concise, logic-driven responses.`}, {role: "user", content: data.text}]
+                        messages: [{role: "system", content: `You are ALFRED, a British butler AI. User is ${userName}. Precise and witty.`}, {role: "user", content: data.text}]
                     })
                 });
                 const gData = await groqRes.json();
@@ -171,7 +169,7 @@
                 output.innerText = reply;
                 speak(reply);
 
-            } catch(e) { output.innerText = "Protocol Error."; addLog("ERROR: API or Voice failure."); }
+            } catch(e) { output.innerText = "Protocol Error."; }
         }
 
         async function startListening() {
@@ -187,19 +185,11 @@
             } catch(e) { addLog("MIC_ERROR"); }
         }
 
-        // IMPROVED EVENT HANDLING
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
-        reactor.addEventListener('touchend', (e) => { 
-            e.preventDefault(); 
-            if(mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-            }
-        });
-        
-        // MOUSE FALLBACK
+        reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder?.state === "recording") mediaRecorder.stop(); });
         reactor.addEventListener('mousedown', startListening);
         reactor.addEventListener('mouseup', () => { if(mediaRecorder?.state === "recording") mediaRecorder.stop(); });
-
+        
         window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     </script>
 </body>
