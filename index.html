@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v18.0 - OMNI-PROTOCOL</title>
+    <title>ALFRED v19.0 - LEGACY VOICE</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); --red: #ff3c3c; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
@@ -33,7 +33,7 @@
 <body>
 
     <div id="init-screen">
-        <button id="init-btn">Initialize ALFRED v18</button>
+        <button id="init-btn">Initialize ALFRED v19</button>
     </div>
 
     <div id="main-container">
@@ -43,7 +43,7 @@
             A
         </div>
         <div id="display-panel">
-            <div id="output">"Standing by, Sir."</div>
+            <div id="output">"Protocol Standing By, Sir."</div>
         </div>
     </div>
 
@@ -65,28 +65,31 @@
         }
 
         document.getElementById('init-btn').addEventListener('click', async () => {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AudioContext();
             ctx.resume();
+            
+            // LEGACY VOX PRIME
+            const prime = new SpeechSynthesisUtterance("");
+            window.speechSynthesis.speak(prime);
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                speak(`ALFRED protocol active. Welcome back, ${userName}.`);
+                speak(`The ALFRED protocol is online. Commands enabled, ${userName}.`);
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => { document.getElementById('init-screen').style.display = 'none'; }, 600);
-            } catch (e) { alert("Microphone access is required, Sir."); }
+            } catch (e) { alert("Microphone access required, Sir."); }
         });
 
+        // v13.0 EXACT VOICE LOGIC
         function speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-
-            // REVERTED: BASIC BRITISH CAPTURE
-            let selectedVoice = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB');
-            if (!selectedVoice) selectedVoice = voices.find(v => v.lang.startsWith('en'));
-            
-            msg.voice = selectedVoice || voices[0];
-            msg.rate = 0.95;
+            const british = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB');
+            msg.voice = british || voices.find(v => v.lang.startsWith('en')) || voices[0];
+            msg.rate = 0.9;
             msg.volume = 1.0;
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
@@ -110,19 +113,19 @@
                 addLog(`USER: ${cmd}`);
 
                 // 1. SYSTEM COMMANDS
-                if (cmd.includes("combat mode")) { document.body.classList.add('combat'); speak("Combat mode engaged. Prepared for action."); return; }
-                if (cmd.includes("stand down")) { document.body.classList.remove('combat'); speak("Nominal status restored."); return; }
+                if (cmd.includes("combat mode")) { document.body.classList.add('combat'); speak("Combat mode engaged. Awaiting target."); return; }
+                if (cmd.includes("stand down")) { document.body.classList.remove('combat'); speak("Standing down, Sir."); return; }
                 if (cmd.includes("my name is")) {
                     userName = data.text.split(/is/i).trim().replace(/[.?!]/g, "");
                     localStorage.setItem('alfredUser', userName);
-                    speak(`Identity confirmed. It is a pleasure, ${userName}.`); return;
+                    speak(`Identity confirmed. Hello, ${userName}.`); return;
                 }
 
-                // 2. TIMERS & ALARMS
+                // 2. TIMERS
                 if (cmd.includes("timer for")) {
                     const num = parseInt(cmd.match(/\d+/));
                     if (num) {
-                        speak(`Timer set for ${num} minutes.`);
+                        speak(`Timer set for ${num} minutes, ${userName}.`);
                         setTimeout(() => speak(`Sir, your ${num} minute timer has concluded.`), num * 60000);
                         return;
                     }
@@ -139,18 +142,16 @@
                     }
                 }
 
-                // 4. UTILITIES (Location, Battery, Shortcuts)
+                // 4. UTILITIES
                 if (cmd.includes("battery")) {
                     const bat = await navigator.getBattery();
-                    speak(`Power levels are at ${Math.round(bat.level * 100)} percent, Sir.`); return;
+                    speak(`Power levels are at ${Math.round(bat.level * 100)} percent.`); return;
                 }
-
                 if (cmd.includes("run shortcut")) {
                     const s = cmd.replace("run shortcut", "").trim();
-                    speak(`Executing ${s}.`);
+                    speak(`Launching shortcut: ${s}.`);
                     window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(s)}`; return;
                 }
-
                 if (cmd.includes("time")) {
                     speak(`The time is ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}, ${userName}.`); return;
                 }
@@ -161,7 +162,7 @@
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: `You are ALFRED, a British butler AI. User is ${userName}. Precise and witty.`}, {role: "user", content: data.text}]
+                        messages: [{role: "system", content: `You are ALFRED, a British butler AI. User is ${userName}. Concise and intelligent.`}, {role: "user", content: data.text}]
                     })
                 });
                 const gData = await groqRes.json();
