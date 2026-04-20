@@ -27,7 +27,7 @@
 <body>
 
     <div id="init-screen">
-        <button id="init-btn">Initialize ALFRED v26</button>
+        <button id="init-btn">Initialize</button>
     </div>
 
     <div id="main-container">
@@ -36,7 +36,7 @@
             <button id="brief-btn" class="mode-btn">BRIEFING</button>
         </div>
         <div id="arc-reactor"><div class="ring"></div>A</div>
-        <div id="display-panel"><div id="output">"Omni-Protocol Standing By, Sir."</div></div>
+        <div id="display-panel"><div id="output">"Alfred de butler Standing By, Sir."</div></div>
     </div>
 
     <div id="log-container"></div>
@@ -152,7 +152,7 @@
                     method: "POST", headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: `You are ALFRED, a British butler. Use current context. User is ${userName}. Notes: ${userNotes.join(', ')}.`}, ...history]
+                        messages: [{role: "system", content: `You are ALFRED, an AI butler for Lachlan Warwick. Use current context. Speak in 25 words or less, unless giving details. User is ${userName}. Notes: ${userNotes.join(', ')}.`}, ...history]
                     })
                 });
                 const gData = await groqRes.json();
