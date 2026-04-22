@@ -3,64 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v26.0 - OMNI PROTOCOL</title>
+    <title>ARTHUR v14.0 - ADVANCED COMMAND</title>
     <style>
-        :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); --red: #ff3c3c; }
+        :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
-        body { background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; height: 100vh; margin: 0; overflow: hidden; transition: 0.5s; }
-        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.8s; }
-        #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); }
-        #main-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; gap: 15px; }
-        #arc-reactor { width: 140px; height: 140px; border: 2px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; text-shadow: 0 0 15px var(--glow); box-shadow: inset 0 0 30px var(--hologram); cursor: pointer; position: relative; transition: 0.3s; z-index: 5; }
-        #arc-reactor.active { box-shadow: inset 0 0 60px var(--glow), 0 0 40px var(--glow); transform: scale(1.05); }
-        .ring { position: absolute; width: 125%; height: 125%; border: 1px solid var(--hologram); border-radius: 50%; border-top: 2px solid var(--glow); animation: spin 4s linear infinite; }
-        #display-panel { width: 90%; text-align: center; z-index: 5; }
-        #output { font-size: 0.9rem; font-weight: 300; min-height: 50px; font-style: italic; color: #e0faff; padding: 0 10px; }
-        #controls { display: flex; gap: 8px; margin-bottom: 5px; }
-        .mode-btn { background: transparent; border: 1px solid var(--hologram); color: var(--glow); font-size: 0.55rem; padding: 4px 8px; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
-        .mode-btn.on { border-color: var(--glow); box-shadow: 0 0 8px var(--glow); }
-        #log-container { width: 100%; height: 110px; background: rgba(0, 0, 0, 0.7); border-top: 1px solid var(--hologram); overflow-y: auto; padding: 10px; font-family: monospace; font-size: 0.6rem; color: var(--glow); opacity: 0.7; }
+        body { background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-around; height: 100vh; margin: 0; overflow: hidden; padding: 40px 0; }
+        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.5s; }
+        #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); font-size: 1.2rem; }
+        #arc-reactor { width: 180px; height: 180px; border: 1px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 15px var(--glow); box-shadow: inset 0 0 30px var(--hologram), 0 0 20px var(--hologram); cursor: pointer; position: relative; z-index: 5; transition: all 0.3s; }
+        #arc-reactor.active { box-shadow: inset 0 0 50px var(--glow), 0 0 30px var(--glow); transform: scale(1.05); }
+        .ring { position: absolute; width: 120%; height: 120%; border: 1px solid var(--hologram); border-radius: 50%; border-top: 2px solid var(--glow); animation: spin 4s linear infinite; }
+        .scanner { position: absolute; width: 100%; height: 2px; background: var(--glow); top: 50%; opacity: 0; box-shadow: 0 0 10px var(--glow); pointer-events: none; }
+        .listening .scanner { animation: scan 1.5s ease-in-out infinite; opacity: 0.5; }
+        #display-panel { width: 90%; text-align: center; padding: 20px; border-top: 1px solid var(--hologram); }
+        #status { font-size: 0.6rem; letter-spacing: 5px; opacity: 0.7; margin-bottom: 10px; text-transform: uppercase; }
+        #output { font-size: 1.1rem; font-weight: 300; line-height: 1.4; color: #e0faff; min-height: 60px; font-style: italic; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes scan { 0% { top: 10%; } 50% { top: 90%; } 100% { top: 10%; } }
     </style>
 </head>
 <body>
 
-    <div id="init-screen"><button id="init-btn">Initialize</button></div>
-
-    <div id="main-container">
-        <div id="controls">
-            <button id="auto-mode" class="mode-btn">CONTINUOUS: OFF</button>
-            <button id="brief-btn" class="mode-btn">BRIEFING</button>
-        </div>
-        <div id="arc-reactor"><div class="ring"></div>A</div>
-        <div id="display-panel"><div id="output">"Alfred Standing By, Sir."</div></div>
+    <div id="init-screen">
+        <button id="init-btn">Initialize ARTHUR</button>
     </div>
 
-    <div id="log-container"></div>
+    <div id="arc-reactor">
+        <div class="ring"></div>
+        <div class="scanner"></div>
+        A
+    </div>
+
+    <div id="display-panel">
+        <div id="status">OFFLINE</div>
+        <div id="output">"Awaiting instructions, Sir."</div>
+    </div>
 
     <script>
         const GK_A = "gsk_", GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
         const OK_A = "sk-proj-", OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
         const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
+        
+        const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor');
+        let mediaRecorder, chunks = [];
 
-        const output = document.getElementById('output'), reactor = document.getElementById('arc-reactor'), logBox = document.getElementById('log-container'), autoBtn = document.getElementById('auto-mode');
-        let mediaRecorder, chunks = [], isAuto = false, history = [];
-        let userName = "Sir";
-        let userNotes = JSON.parse(localStorage.getItem('alfredNotes')) || [];
-
-        function addLog(msg) {
-            const entry = document.createElement('div');
-            entry.innerText = `[${new Date().toLocaleTimeString([], {hour12: false})}] ${msg}`;
-            logBox.prepend(entry);
-        }
-
-        autoBtn.onclick = () => { isAuto = !isAuto; autoBtn.innerText = `CONTINUOUS: ${isAuto ? 'ON' : 'OFF'}`; autoBtn.classList.toggle('on'); };
-
-        document.getElementById('init-btn').onclick = async () => {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)(); ctx.resume();
-            speak("Omni protocol active. How may I assist you?");
-            document.getElementById('init-screen').style.display = 'none';
-        };
+        document.getElementById('init-btn').addEventListener('click', async () => {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AudioContext();
+            ctx.resume();
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(t => t.stop());
+                speak("Systems integrated. Location and Command modules are live, Sir.");
+                document.getElementById('init-screen').style.opacity = '0';
+                setTimeout(() => { document.getElementById('init-screen').style.display = 'none'; status.innerText = "LINK ACTIVE"; }, 500);
+            } catch (e) { alert("Permission denied, Sir."); }
+        });
 
         function speak(text) {
             window.speechSynthesis.cancel();
@@ -69,100 +67,100 @@
             msg.voice = voices.find(v => v.lang.includes('GB')) || voices[0];
             msg.rate = 0.9;
             msg.onstart = () => reactor.classList.add('active');
-            msg.onend = () => { 
-                reactor.classList.remove('active');
-                if(isAuto) setTimeout(startListening, 600); 
-            };
+            msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
-            addLog(`ALFRED: ${text}`);
-            history.push({role: "assistant", content: text});
-        }
-
-        async function runBriefing() {
-            output.innerText = "Accessing systems...";
-            try {
-                // Time
-                const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                // Battery
-                const bat = await navigator.getBattery();
-                const bLevel = Math.round(bat.level * 100);
-                
-                // Location & Weather
-                navigator.geolocation.getCurrentPosition(async (pos) => {
-                    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`);
-                    const wData = await wRes.json();
-                    const temp = Math.round(wData.current_weather.temperature);
-                    
-                    let brief = `Good day. It is ${time}. Battery is at ${bLevel} percent. Outside it is ${temp} degrees.`;
-                    if(userNotes.length > 0) brief += ` Reminder: ${userNotes[userNotes.length-1]}.`;
-                    speak(brief);
-                }, () => {
-                    speak(`It is ${time}. Battery ${bLevel} percent. I cannot access location for weather.`);
-                });
-            } catch(e) { speak("Briefing failed. Local permissions required."); }
         }
 
         async function processVoice(blob) {
-            output.innerText = "Processing...";
-            const fd = new FormData(); fd.append("file", blob, "audio.m4a"); fd.append("model", "whisper-1");
+            status.innerText = "ANALYZING...";
+            reactor.classList.remove('listening');
+            const fd = new FormData();
+            fd.append("file", blob, "audio.m4a");
+            fd.append("model", "whisper-1");
+
             try {
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
                     method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
                 const cmd = data.text.toLowerCase().trim();
-                addLog(`USER: ${cmd}`);
-                history.push({role: "user", content: data.text});
+                output.innerText = `"${data.text}"`;
 
-                // DIRECT HARDWARE COMMANDS
-                if (cmd.includes("time")) {
-                    speak(`The time is ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}.`);
+                // --- 1. SHORTCUTS & APPS ---
+                if (cmd.includes("run shortcut")) {
+                    let shortcut = cmd.replace("run shortcut", "").trim();
+                    speak(`Launching ${shortcut} shortcut, Sir.`);
+                    window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcut)}`;
                     return;
                 }
+                
+                if (cmd.includes("open") || cmd.includes("launch")) {
+                    const apps = {"spotify": "spotify://", "youtube": "youtube://", "whatsapp": "whatsapp://", "music": "music://", "instagram": "instagram://"};
+                    for (let app in apps) {
+                        if (cmd.includes(app)) { speak(`Opening ${app}, Sir.`); window.location.href = apps[app]; return; }
+                    }
+                }
+
+                // --- 2. LOCATION & WEATHER ---
+                if (cmd.includes("where am i") || cmd.includes("location") || cmd.includes("weather")) {
+                    navigator.geolocation.getCurrentPosition(async (pos) => {
+                        const lat = pos.coords.latitude.toFixed(2);
+                        const lon = pos.coords.longitude.toFixed(2);
+                        if (cmd.includes("weather")) {
+                            const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+                            const wData = await wRes.json();
+                            speak(`The current temperature is ${wData.current_weather.temperature} degrees, Sir.`);
+                        } else {
+                            speak(`You are currently at coordinates ${lat} latitude and ${lon} longitude, Sir.`);
+                        }
+                    });
+                    return;
+                }
+
+                // --- 3. BATTERY & TIME ---
                 if (cmd.includes("battery")) {
                     const bat = await navigator.getBattery();
-                    speak(`Battery level is ${Math.round(bat.level * 100)} percent.`);
+                    speak(`Power levels are at ${Math.round(bat.level * 100)} percent, Sir.`);
                     return;
                 }
-                if (cmd.includes("briefing") || cmd.includes("my day")) {
-                    runBriefing(); return;
+                if (cmd.includes("time")) {
+                    speak(`The time is ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}, Sir.`);
+                    return;
                 }
 
-                // SHORTCUTS / APPS
-                if (cmd.startsWith("run ")) {
-                    const sName = cmd.replace("run ", "").trim();
-                    speak(`Executing ${sName}.`);
-                    window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(sName)}`; return;
-                }
-
-                // BRAIN
+                // --- 4. BRAIN (MATH/LOGIC) ---
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST", headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ALFRED, a polite British AI butler. Be concise."}, ...history]
+                        messages: [{role: "system", content: "You are ARTHUR, a British AI butler. You excel at math and logic. Keep responses under 25 words."}, {role: "user", content: data.text}]
                     })
                 });
-                const gData = await groqRes.json();
-                const reply = gData.choices[0].message.content;
-                output.innerText = reply; speak(reply);
-            } catch(e) { output.innerText = "Comms Error."; }
+                const groqData = await groqRes.json();
+                const reply = groqData.choices[0].message.content;
+                output.innerText = reply;
+                speak(reply);
+                status.innerText = "READY";
+            } catch(e) { status.innerText = "ERROR"; }
         }
 
         async function startListening() {
-            if(window.speechSynthesis.speaking) return;
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(s); chunks = [];
+                mediaRecorder = new MediaRecorder(s);
+                chunks = [];
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
-                mediaRecorder.start(); addLog("LISTENING...");
-            } catch(e) { addLog("MIC_ERROR"); }
+                mediaRecorder.start();
+                status.innerText = "LISTENING...";
+                reactor.classList.add('listening');
+            } catch(e) { status.innerText = "MIC_ERROR"; }
         }
 
-        reactor.onmousedown = reactor.ontouchstart = (e) => { e.preventDefault(); if(!isAuto) startListening(); };
-        reactor.onmouseup = reactor.ontouchend = (e) => { e.preventDefault(); if(!isAuto && mediaRecorder?.state === "recording") mediaRecorder.stop(); };
-        document.getElementById('brief-btn').onclick = () => runBriefing();
+        reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
+        reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
+        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     </script>
 </body>
 </html>
