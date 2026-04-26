@@ -64,7 +64,8 @@
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            msg.voice = voices.find(v => v.lang.includes('GB')) || voices[0];
+            // Force basic British Voice (en-GB)
+            msg.voice = voices.find(v => v.lang === 'en-GB') || voices.find(v => v.lang.includes('GB')) || voices[0];
             msg.rate = 0.9;
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
@@ -86,7 +87,6 @@
                 const cmd = data.text.toLowerCase().trim();
                 output.innerText = `"${data.text}"`;
 
-                // --- 1. SHORTCUTS & APPS ---
                 if (cmd.includes("run shortcut")) {
                     let shortcut = cmd.replace("run shortcut", "").trim();
                     speak(`Launching ${shortcut} shortcut, Sir.`);
@@ -101,7 +101,6 @@
                     }
                 }
 
-                // --- 2. LOCATION & WEATHER ---
                 if (cmd.includes("where am i") || cmd.includes("location") || cmd.includes("weather")) {
                     navigator.geolocation.getCurrentPosition(async (pos) => {
                         const lat = pos.coords.latitude.toFixed(2);
@@ -117,7 +116,6 @@
                     return;
                 }
 
-                // --- 3. BATTERY & TIME ---
                 if (cmd.includes("battery")) {
                     const bat = await navigator.getBattery();
                     speak(`Power levels are at ${Math.round(bat.level * 100)} percent, Sir.`);
@@ -128,7 +126,6 @@
                     return;
                 }
 
-                // --- 4. BRAIN (MATH/LOGIC) ---
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
