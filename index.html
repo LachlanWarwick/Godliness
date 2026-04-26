@@ -47,28 +47,49 @@
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor');
         let mediaRecorder, chunks = [];
 
+        // Pre-load voices
+        window.speechSynthesis.getVoices();
+
         document.getElementById('init-btn').addEventListener('click', async () => {
+            // Wake up Audio Context
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             const ctx = new AudioContext();
-            ctx.resume();
+            await ctx.resume();
+
             try {
+                // Request Mic early
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                speak("Systems integrated. Location and Command modules are live, Sir.");
+
+                // Reveal UI
                 document.getElementById('init-screen').style.opacity = '0';
-                setTimeout(() => { document.getElementById('init-screen').style.display = 'none'; status.innerText = "LINK ACTIVE"; }, 500);
-            } catch (e) { alert("Permission denied, Sir."); }
+                setTimeout(() => { 
+                    document.getElementById('init-screen').style.display = 'none'; 
+                    status.innerText = "LINK ACTIVE"; 
+                    // Voice greeting triggered by direct user click
+                    speak("Systems integrated. Basic British voice active. Awaiting your command, Sir.");
+                }, 500);
+            } catch (e) { alert("Mic permission is required for ARTHUR to function, Sir."); }
         });
 
         function speak(text) {
+            // Cancel current speech
             window.speechSynthesis.cancel();
+            
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            // Force basic British Voice (en-GB)
-            msg.voice = voices.find(v => v.lang === 'en-GB') || voices.find(v => v.lang.includes('GB')) || voices[0];
+            
+            // Specifically target "en-GB"
+            const britishVoice = voices.find(v => v.lang === 'en-GB' || v.lang.includes('GB'))||voices[0];
+            if (britishVoice) msg.voice = britishVoice;
+            
+            msg.volume = 1;
             msg.rate = 0.9;
+            msg.pitch = 1;
+
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
+            
             window.speechSynthesis.speak(msg);
         }
 
@@ -84,6 +105,8 @@
                     method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
+                if(!data.text) throw new Error("No text");
+                
                 const cmd = data.text.toLowerCase().trim();
                 output.innerText = `"${data.text}"`;
 
@@ -131,7 +154,7 @@
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ARTHUR, a British AI butler. You excel at math and logic. Keep responses under 25 words."}, {role: "user", content: data.text}]
+                        messages: [{role: "system", content: "You are ARTHUR, a British AI butler. Keep responses under 25 words."}, {role: "user", content: data.text}]
                     })
                 });
                 const groqData = await groqRes.json();
@@ -139,7 +162,10 @@
                 output.innerText = reply;
                 speak(reply);
                 status.innerText = "READY";
-            } catch(e) { status.innerText = "ERROR"; }
+            } catch(e) { 
+                status.innerText = "ERROR"; 
+                speak("I encountered an error processing that request, Sir.");
+            }
         }
 
         async function startListening() {
@@ -157,6 +183,8 @@
 
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
         reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); });
+        
+        // Ensure voices are loaded
         window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     </script>
 </body>
