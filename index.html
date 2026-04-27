@@ -3,83 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED GAUNTLET OS</title>
+    <title>ALFRED v14.4 - TACTICAL GAUNTLET</title>
     <style>
-        :root { --glow: #00f2ff; --dim-glow: rgba(0, 242, 255, 0.3); --bg: #000b14; --panel: rgba(0, 20, 30, 0.8); }
+        :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); --panel-bg: rgba(0, 30, 50, 0.4); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
         
         body { 
-            background: var(--bg); margin: 0; overflow: hidden; 
+            background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; 
             display: flex; align-items: center; justify-content: center; 
-            height: 100vh; width: 100vw; font-family: 'Courier New', monospace; 
-            color: var(--glow);
+            height: 100vh; margin: 0; overflow: hidden;
+            background-image: linear-gradient(var(--hologram) 1px, transparent 1px), linear-gradient(90deg, var(--hologram) 1px, transparent 1px);
+            background-size: 20px 20px;
         }
 
-        /* Tactical Container */
         #suit-container { 
             width: 100%; height: 100%; display: flex; flex-direction: column; 
-            align-items: center; justify-content: space-around; padding: 60px 20px;
-            transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
-            background-image: radial-gradient(var(--dim-glow) 1px, transparent 1px);
-            background-size: 30px 30px;
+            align-items: center; justify-content: space-around; padding: 40px 0;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Right-Arm Specific Rotation */
+        /* Two-Way Rotation for Right Arm */
         .rot-right { transform: rotate(90deg); width: 100vh !important; height: 100vw !important; }
 
-        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.8s; }
-        #init-btn { border: 1px solid var(--glow); padding: 25px 50px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 6px; cursor: pointer; box-shadow: 0 0 20px var(--dim-glow); }
+        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.5s; }
+        #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); font-size: 1.2rem; }
 
-        /* Arc Reactor HUD */
+        /* Advanced Reactor UI */
         #arc-reactor { 
-            width: 180px; height: 180px; border: 2px solid var(--glow); border-radius: 50%; 
+            width: 200px; height: 200px; border: 1px solid var(--glow); border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; font-size: 3.5rem; 
-            text-shadow: 0 0 15px var(--glow); box-shadow: 0 0 40px var(--dim-glow), inset 0 0 20px var(--dim-glow);
-            cursor: pointer; position: relative; z-index: 5; background: var(--bg);
+            text-shadow: 0 0 20px var(--glow); box-shadow: inset 0 0 40px var(--hologram), 0 0 20px var(--hologram); 
+            cursor: pointer; position: relative; z-index: 5; transition: all 0.3s;
         }
+        #arc-reactor.active { box-shadow: inset 0 0 60px var(--glow), 0 0 30px var(--glow); transform: scale(1.05); }
         
-        .active { animation: pulse 1s infinite alternate; }
-        
-        .ring { position: absolute; width: 130%; height: 130%; border: 1px dashed var(--glow); border-radius: 50%; opacity: 0.4; animation: spin 8s linear infinite; }
-        .ring-inner { position: absolute; width: 115%; height: 115%; border: 1px solid var(--glow); border-radius: 50%; border-left-color: transparent; border-right-color: transparent; animation: spin 3s linear infinite reverse; }
+        .ring-outer { position: absolute; width: 135%; height: 135%; border: 1px dashed var(--glow); border-radius: 50%; animation: spin 10s linear infinite; opacity: 0.3; }
+        .ring-inner { position: absolute; width: 115%; height: 115%; border: 2px solid var(--glow); border-radius: 50%; border-top-color: transparent; border-bottom-color: transparent; animation: spin 3s linear infinite reverse; }
+        .scanner { position: absolute; width: 100%; height: 2px; background: var(--glow); top: 50%; opacity: 0; box-shadow: 0 0 10px var(--glow); pointer-events: none; }
+        .listening .scanner { animation: scan 1.5s ease-in-out infinite; opacity: 0.8; }
 
-        /* Output Panel */
+        /* Data HUD Panel */
         #display-panel { 
-            width: 100%; max-width: 400px; background: var(--panel); 
-            padding: 20px; border: 1px solid var(--dim-glow); 
-            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
+            width: 85%; max-width: 450px; text-align: left; padding: 20px; 
+            background: var(--panel-bg); border: 1px solid var(--glow);
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
         }
-        #status { font-size: 0.7rem; letter-spacing: 4px; color: #008c96; margin-bottom: 8px; text-align: left; padding-left: 30px; }
-        #output { font-size: 1rem; color: #fff; min-height: 50px; padding: 0 30px; }
+        #status { font-size: 0.6rem; letter-spacing: 5px; opacity: 0.8; margin-bottom: 10px; text-transform: uppercase; color: #fff; }
+        #output { font-size: 1.1rem; font-weight: 300; line-height: 1.4; color: #e0faff; min-height: 60px; font-style: italic; }
 
-        #flip-btn { 
-            position: fixed; top: 20px; left: 20px; background: none; 
-            border: 1px solid var(--dim-glow); color: var(--glow); 
-            padding: 10px; font-size: 0.6rem; z-index: 101; letter-spacing: 2px;
-        }
+        #flip-btn { position: fixed; top: 20px; right: 20px; background: none; border: 1px solid var(--glow); color: var(--glow); padding: 10px; font-size: 0.7rem; z-index: 101; cursor: pointer; border-radius: 4px; }
 
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes pulse { from { box-shadow: 0 0 20px var(--dim-glow); } to { box-shadow: 0 0 50px var(--glow); } }
+        @keyframes scan { 0% { top: 10%; } 50% { top: 90%; } 100% { top: 10%; } }
     </style>
 </head>
 <body>
 
     <div id="init-screen">
-        <button id="init-btn">Initialize Suit</button>
+        <button id="init-btn">Initialize Neural Link</button>
     </div>
 
-    <button id="flip-btn" onclick="rotateUI()">TOGGLE AXIS</button>
+    <button id="flip-btn">AXIS SWAP</button>
 
     <div id="suit-container">
         <div id="arc-reactor">
-            <div class="ring"></div>
+            <div class="ring-outer"></div>
             <div class="ring-inner"></div>
+            <div class="scanner"></div>
             A
         </div>
 
         <div id="display-panel">
-            <div id="status">SYS_STATUS: READY</div>
-            <div id="output">"Awaiting neural link, Sir."</div>
+            <div id="status">GAUNTLET_OS // ONLINE</div>
+            <div id="output">"Awaiting instructions, Sir."</div>
         </div>
     </div>
 
@@ -89,23 +85,26 @@
         const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
         
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor'), container = document.getElementById('suit-container');
-        let mediaRecorder, chunks = [], isRight = false;
+        let mediaRecorder, chunks = [], isRotated = false;
 
-        function rotateUI() {
-            isRight = !isRight;
-            container.className = isRight ? 'rot-right' : '';
-            if (navigator.vibrate) navigator.vibrate(isRight ? : 40);
-        }
+        // TWO-WAY ROTATION LOGIC
+        document.getElementById('flip-btn').addEventListener('click', () => {
+            isRotated = !isRotated;
+            container.className = isRotated ? 'rot-right' : '';
+            if (navigator.vibrate) navigator.vibrate(40);
+        });
 
         document.getElementById('init-btn').addEventListener('click', async () => {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             ctx.resume();
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
             try {
-                await navigator.mediaDevices.getUserMedia({ audio: true });
-                speak("Gauntlet online. Welcome back, Sir.");
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(t => t.stop());
+                speak("Gauntlet systems nominal. Welcome back, Sir.");
                 document.getElementById('init-screen').style.opacity = '0';
-                setTimeout(() => document.getElementById('init-screen').style.display = 'none', 800);
-            } catch (e) { alert("Mic required for Suit OS."); }
+                setTimeout(() => { document.getElementById('init-screen').style.display = 'none'; }, 500);
+            } catch (e) { alert("Mic required."); }
         });
 
         function speak(text) {
@@ -113,13 +112,15 @@
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
             msg.voice = voices.find(v => v.lang.includes('GB')) || voices[0];
+            msg.rate = 0.9;
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
         }
 
         async function processVoice(blob) {
-            status.innerText = "SYS_STATUS: ANALYZING";
+            status.innerText = "UPLINK_ANALYSIS...";
+            if (navigator.vibrate) navigator.vibrate();
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
             fd.append("model", "whisper-1");
@@ -130,10 +131,11 @@
                 });
                 const data = await res.json();
                 const cmd = data.text.toLowerCase().trim();
-                
+                output.innerText = `"${data.text}"`;
+
                 if (cmd.includes("open") || cmd.includes("run") || cmd.includes("shortcut")) {
                     let sc = cmd.replace("open","").replace("run","").replace("shortcut","").trim();
-                    speak(`Executing ${sc}.`);
+                    speak(`Launching ${sc} protocol.`);
                     window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(sc)}`;
                     return;
                 }
@@ -143,32 +145,33 @@
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ALFRED, a suit AI. Max 15 words. Concise and loyal. Address user as Sir."}, {role: "user", content: data.text}]
+                        messages: [{role: "system", content: "You are ALFRED, a suit AI. Max 20 words. Address user as Sir."}, {role: "user", content: data.text}]
                     })
                 });
                 const groqData = await groqRes.json();
                 const reply = groqData.choices[0].message.content;
                 output.innerText = reply;
                 speak(reply);
-                status.innerText = "SYS_STATUS: ACTIVE";
-            } catch(e) { status.innerText = "SYS_STATUS: ERROR"; }
+                status.innerText = "GAUNTLET_OS // READY";
+            } catch(e) { status.innerText = "UPLINK_ERROR"; }
         }
 
         async function startListening() {
             try {
-                if (navigator.vibrate) navigator.vibrate(30);
+                if (navigator.vibrate) navigator.vibrate(50);
                 const s = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(s);
                 chunks = [];
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
-                status.innerText = "SYS_STATUS: LISTENING";
-            } catch(e) { status.innerText = "SYS_STATUS: MIC_FAIL"; }
+                status.innerText = "NEURAL_LINK_ACTIVE...";
+                reactor.classList.add('listening');
+            } catch(e) { status.innerText = "MIC_LINK_FAIL"; }
         }
 
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
-        reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder?.state === "recording") mediaRecorder.stop(); });
+        reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder?.state === "recording") mediaRecorder.stop(); reactor.classList.remove('listening'); });
     </script>
 </body>
 </html>
