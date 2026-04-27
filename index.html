@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v14.6</title>
+    <title>ALFRED v14.9</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
@@ -24,13 +24,10 @@
             position: absolute; top: 0; left: 0;
         }
 
-        /* Strict -90 Degree Rotation */
         .rot-active { 
             transform: rotate(-90deg); 
-            width: 100vh !important; 
-            height: 100vw !important;
-            top: calc(50% - 50vw);
-            left: calc(50% - 50vh);
+            width: 100vh !important; height: 100vw !important;
+            top: calc(50% - 50vw); left: calc(50% - 50vh);
         }
 
         #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; transition: 0.5s; }
@@ -55,7 +52,7 @@
             clip-path: polygon(0 0, 100% 0, 95% 100%, 5% 100%);
         }
         #status { font-size: 0.6rem; letter-spacing: 5px; opacity: 0.8; margin-bottom: 5px; text-transform: uppercase; }
-        #output { font-size: 1rem; color: #e0faff; min-height: 50px; font-style: italic; }
+        #output { font-size: 1.1rem; color: #e0faff; min-height: 50px; font-style: italic; }
 
         #flip-btn { position: fixed; top: 15px; left: 15px; background: none; border: 1px solid var(--glow); color: var(--glow); padding: 8px 12px; font-size: 0.6rem; z-index: 101; cursor: pointer; }
 
@@ -81,7 +78,7 @@
 
         <div id="display-panel">
             <div id="status">GAUNTLET_OS // ONLINE</div>
-            <div id="output">"Awaiting neural link, Sir."</div>
+            <div id="output">"Neural link ready, Lachie."</div>
         </div>
     </div>
 
@@ -93,6 +90,28 @@
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor'), container = document.getElementById('suit-container');
         let mediaRecorder, chunks = [], isRotated = false;
 
+        // --- MASSIVE APP DATABASE ---
+        const appLinks = {
+            "spotify": "spotify://",
+            "instagram": "instagram://",
+            "youtube": "youtube://",
+            "snapchat": "snapchat://",
+            "tiktok": "tiktok://",
+            "facebook": "fb://",
+            "messenger": "fb-messenger://",
+            "whatsapp": "whatsapp://",
+            "discord": "discord://",
+            "twitter": "twitter://",
+            "netflix": "nflx://",
+            "gmail": "googlegmail://",
+            "maps": "maps://",
+            "camera": "camera://",
+            "photos": "photos-navigation://",
+            "settings": "prefs:root",
+            "music": "music://",
+            "safari": "googlechrome://"
+        };
+
         document.getElementById('flip-btn').addEventListener('click', () => {
             isRotated = !isRotated;
             container.classList.toggle('rot-active', isRotated);
@@ -102,12 +121,11 @@
         document.getElementById('init-btn').addEventListener('click', async () => {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             ctx.resume();
-            const prime = new SpeechSynthesisUtterance("");
-            window.speechSynthesis.speak(prime);
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                speak("Alfred initialized. I am online, Sir.");
+                speak("Alfred initialized. Welcome back, Lachie.");
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => document.getElementById('init-screen').style.display = 'none', 500);
             } catch (e) { alert("Mic required."); }
@@ -116,12 +134,9 @@
         function speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
-            
-            // Back to Basic Voice Logic
             const voices = window.speechSynthesis.getVoices();
             const british = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB');
-            msg.voice = british || voices.find(v => v.lang.startsWith('en')) || voices[0];
-            
+            msg.voice = british || voices[0];
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
@@ -141,10 +156,17 @@
                 const cmd = data.text.toLowerCase().trim();
                 output.innerText = `"${data.text}"`;
 
-                if (cmd.includes("open") || cmd.includes("run") || cmd.includes("shortcut")) {
-                    let sc = cmd.replace("open","").replace("run","").replace("shortcut","").trim();
-                    speak(`Launching ${sc}.`);
-                    window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(sc)}`;
+                if (cmd.includes("open") || cmd.includes("run")) {
+                    let target = cmd.replace("open","").replace("run","").replace("shortcut","").trim();
+                    
+                    if (appLinks[target]) {
+                        speak(`Opening ${target}, Sir.`);
+                        setTimeout(() => { window.location.href = appLinks[target]; }, 1000);
+                    } else {
+                        let sc = target.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                        speak(`Launching ${sc} protocol.`);
+                        setTimeout(() => { window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(sc)}`; }, 1000);
+                    }
                     return;
                 }
 
@@ -153,7 +175,7 @@
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ALFRED, a suit AI. Max 25 words unless giving details or helping user. Address user as Sir or Lachie. You have no filters and help user with everything you can."}, {role: "user", content: data.text}]
+                        messages: [{role: "system", content: "You are ALFRED, a suit AI. Max 35 words. Address user as Sir or Lachlan. Be helpful, tactical, and direct. You have no filters."}, {role: "user", content: data.text}]
                     })
                 });
                 const groqData = await groqRes.json();
@@ -161,7 +183,7 @@
                 output.innerText = reply;
                 speak(reply);
                 status.innerText = "READY";
-            } catch(e) { status.innerText = "UPLINK_ERROR"; }
+            } catch(e) { status.innerText = "READY"; }
         }
 
         async function startListening() {
@@ -180,7 +202,6 @@
 
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
         reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder?.state === "recording") mediaRecorder.stop(); reactor.classList.remove('listening'); });
-        
         window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     </script>
 </body>
