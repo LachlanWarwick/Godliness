@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v14.5</title>
+    <title>ALFRED v14.6</title>
     <style>
-        :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); --panel-bg: rgba(0, 30, 50, 0.4); }
+        :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
         
         body { 
@@ -16,26 +16,26 @@
             background-size: 25px 25px;
         }
 
-        /* Fixed Container for Perfect Aspect Ratio */
         #suit-container { 
             width: 100vw; height: 100vh; 
             display: flex; flex-direction: column; 
-            align-items: center; justify-content: space-around; padding: 40px 0;
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            position: absolute;
+            align-items: center; justify-content: space-around; padding: 60px 0;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute; top: 0; left: 0;
         }
 
-        /* -90 Degree Rotation for Right Arm Gauntlet */
+        /* Strict -90 Degree Rotation */
         .rot-active { 
             transform: rotate(-90deg); 
             width: 100vh !important; 
-            height: 100vw !important; 
+            height: 100vw !important;
+            top: calc(50% - 50vw);
+            left: calc(50% - 50vh);
         }
 
         #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; transition: 0.5s; }
         #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); }
 
-        /* Reactor HUD */
         #arc-reactor { 
             width: 180px; height: 180px; border: 1px solid var(--glow); border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; font-size: 3rem; 
@@ -46,13 +46,12 @@
         
         .ring-outer { position: absolute; width: 130%; height: 130%; border: 1px dashed var(--glow); border-radius: 50%; animation: spin 10s linear infinite; opacity: 0.3; }
         .ring-inner { position: absolute; width: 115%; height: 115%; border: 2px solid var(--glow); border-radius: 50%; border-top-color: transparent; border-bottom-color: transparent; animation: spin 3s linear infinite reverse; }
-        .scanner { position: absolute; width: 100%; height: 2px; background: var(--glow); top: 50%; opacity: 0; box-shadow: 0 0 10px var(--glow); pointer-events: none; }
+        .scanner { position: absolute; width: 100%; height: 2px; background: var(--glow); top: 50%; opacity: 0; pointer-events: none; }
         .listening .scanner { animation: scan 1.5s ease-in-out infinite; opacity: 0.8; }
 
-        /* Display Panel */
         #display-panel { 
             width: 85%; max-width: 400px; text-align: center; padding: 20px; 
-            background: var(--panel-bg); border: 1px solid var(--glow);
+            background: rgba(0, 30, 50, 0.4); border: 1px solid var(--glow);
             clip-path: polygon(0 0, 100% 0, 95% 100%, 5% 100%);
         }
         #status { font-size: 0.6rem; letter-spacing: 5px; opacity: 0.8; margin-bottom: 5px; text-transform: uppercase; }
@@ -82,7 +81,7 @@
 
         <div id="display-panel">
             <div id="status">GAUNTLET_OS // ONLINE</div>
-            <div id="output">"Waiting for command, Sir."</div>
+            <div id="output">"Awaiting neural link, Sir."</div>
         </div>
     </div>
 
@@ -94,20 +93,21 @@
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor'), container = document.getElementById('suit-container');
         let mediaRecorder, chunks = [], isRotated = false;
 
-        // Forced Button Rotation (Ignores Phone Sensor)
         document.getElementById('flip-btn').addEventListener('click', () => {
             isRotated = !isRotated;
-            container.className = isRotated ? 'rot-active' : '';
+            container.classList.toggle('rot-active', isRotated);
             if (navigator.vibrate) navigator.vibrate(40);
         });
 
         document.getElementById('init-btn').addEventListener('click', async () => {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             ctx.resume();
+            const prime = new SpeechSynthesisUtterance("");
+            window.speechSynthesis.speak(prime);
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                speak("Suit systems nominal. Welcome back, Sir.");
+                speak("Gauntlet initialized. I am online, Sir.");
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => document.getElementById('init-screen').style.display = 'none', 500);
             } catch (e) { alert("Mic required."); }
@@ -116,9 +116,12 @@
         function speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
+            
+            // Back to Basic Voice Logic
             const voices = window.speechSynthesis.getVoices();
-            msg.voice = voices.find(v => v.lang.includes('GB')) || voices[0];
-            msg.rate = 0.95;
+            const british = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB');
+            msg.voice = british || voices.find(v => v.lang.startsWith('en')) || voices[0];
+            
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
@@ -136,7 +139,8 @@
                 });
                 const data = await res.json();
                 const cmd = data.text.toLowerCase().trim();
-                
+                output.innerText = `"${data.text}"`;
+
                 if (cmd.includes("open") || cmd.includes("run") || cmd.includes("shortcut")) {
                     let sc = cmd.replace("open","").replace("run","").replace("shortcut","").trim();
                     speak(`Launching ${sc}.`);
@@ -149,14 +153,14 @@
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ALFRED, a suit AI. Max 15 words. Address user as Sir."}, {role: "user", content: data.text}]
+                        messages: [{role: "system", content: "You are ALFRED, a suit AI. Max 20 words. Address user as Sir."}, {role: "user", content: data.text}]
                     })
                 });
                 const groqData = await groqRes.json();
                 const reply = groqData.choices[0].message.content;
                 output.innerText = reply;
                 speak(reply);
-                status.innerText = "GAUNTLET_OS // READY";
+                status.innerText = "READY";
             } catch(e) { status.innerText = "UPLINK_ERROR"; }
         }
 
@@ -169,13 +173,15 @@
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
-                status.innerText = "NEURAL_LINK_ACTIVE...";
+                status.innerText = "LISTENING...";
                 reactor.classList.add('listening');
             } catch(e) { status.innerText = "MIC_LINK_FAIL"; }
         }
 
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
         reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder?.state === "recording") mediaRecorder.stop(); reactor.classList.remove('listening'); });
+        
+        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     </script>
 </body>
 </html>
