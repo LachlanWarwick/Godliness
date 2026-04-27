@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v14.4 - TACTICAL GAUNTLET</title>
+    <title>ALFRED v14.5</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); --panel-bg: rgba(0, 30, 50, 0.4); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
@@ -11,47 +11,54 @@
         body { 
             background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; 
             display: flex; align-items: center; justify-content: center; 
-            height: 100vh; margin: 0; overflow: hidden;
+            height: 100vh; width: 100vw; margin: 0; overflow: hidden;
             background-image: linear-gradient(var(--hologram) 1px, transparent 1px), linear-gradient(90deg, var(--hologram) 1px, transparent 1px);
-            background-size: 20px 20px;
+            background-size: 25px 25px;
         }
 
+        /* Fixed Container for Perfect Aspect Ratio */
         #suit-container { 
-            width: 100%; height: 100%; display: flex; flex-direction: column; 
+            width: 100vw; height: 100vh; 
+            display: flex; flex-direction: column; 
             align-items: center; justify-content: space-around; padding: 40px 0;
-            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute;
         }
 
-        /* Two-Way Rotation for Right Arm */
-        .rot-right { transform: rotate(90deg); width: 100vh !important; height: 100vw !important; }
+        /* -90 Degree Rotation for Right Arm Gauntlet */
+        .rot-active { 
+            transform: rotate(-90deg); 
+            width: 100vh !important; 
+            height: 100vw !important; 
+        }
 
-        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.5s; }
-        #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); font-size: 1.2rem; }
+        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; transition: 0.5s; }
+        #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); }
 
-        /* Advanced Reactor UI */
+        /* Reactor HUD */
         #arc-reactor { 
-            width: 200px; height: 200px; border: 1px solid var(--glow); border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; font-size: 3.5rem; 
-            text-shadow: 0 0 20px var(--glow); box-shadow: inset 0 0 40px var(--hologram), 0 0 20px var(--hologram); 
-            cursor: pointer; position: relative; z-index: 5; transition: all 0.3s;
+            width: 180px; height: 180px; border: 1px solid var(--glow); border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; font-size: 3rem; 
+            text-shadow: 0 0 20px var(--glow); box-shadow: inset 0 0 40px var(--hologram); 
+            cursor: pointer; position: relative; flex-shrink: 0;
         }
         #arc-reactor.active { box-shadow: inset 0 0 60px var(--glow), 0 0 30px var(--glow); transform: scale(1.05); }
         
-        .ring-outer { position: absolute; width: 135%; height: 135%; border: 1px dashed var(--glow); border-radius: 50%; animation: spin 10s linear infinite; opacity: 0.3; }
+        .ring-outer { position: absolute; width: 130%; height: 130%; border: 1px dashed var(--glow); border-radius: 50%; animation: spin 10s linear infinite; opacity: 0.3; }
         .ring-inner { position: absolute; width: 115%; height: 115%; border: 2px solid var(--glow); border-radius: 50%; border-top-color: transparent; border-bottom-color: transparent; animation: spin 3s linear infinite reverse; }
         .scanner { position: absolute; width: 100%; height: 2px; background: var(--glow); top: 50%; opacity: 0; box-shadow: 0 0 10px var(--glow); pointer-events: none; }
         .listening .scanner { animation: scan 1.5s ease-in-out infinite; opacity: 0.8; }
 
-        /* Data HUD Panel */
+        /* Display Panel */
         #display-panel { 
-            width: 85%; max-width: 450px; text-align: left; padding: 20px; 
+            width: 85%; max-width: 400px; text-align: center; padding: 20px; 
             background: var(--panel-bg); border: 1px solid var(--glow);
-            clip-path: polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);
+            clip-path: polygon(0 0, 100% 0, 95% 100%, 5% 100%);
         }
-        #status { font-size: 0.6rem; letter-spacing: 5px; opacity: 0.8; margin-bottom: 10px; text-transform: uppercase; color: #fff; }
-        #output { font-size: 1.1rem; font-weight: 300; line-height: 1.4; color: #e0faff; min-height: 60px; font-style: italic; }
+        #status { font-size: 0.6rem; letter-spacing: 5px; opacity: 0.8; margin-bottom: 5px; text-transform: uppercase; }
+        #output { font-size: 1rem; color: #e0faff; min-height: 50px; font-style: italic; }
 
-        #flip-btn { position: fixed; top: 20px; right: 20px; background: none; border: 1px solid var(--glow); color: var(--glow); padding: 10px; font-size: 0.7rem; z-index: 101; cursor: pointer; border-radius: 4px; }
+        #flip-btn { position: fixed; top: 15px; left: 15px; background: none; border: 1px solid var(--glow); color: var(--glow); padding: 8px 12px; font-size: 0.6rem; z-index: 101; cursor: pointer; }
 
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes scan { 0% { top: 10%; } 50% { top: 90%; } 100% { top: 10%; } }
@@ -60,7 +67,7 @@
 <body>
 
     <div id="init-screen">
-        <button id="init-btn">Initialize Neural Link</button>
+        <button id="init-btn">Initialize Suit</button>
     </div>
 
     <button id="flip-btn">AXIS SWAP</button>
@@ -75,7 +82,7 @@
 
         <div id="display-panel">
             <div id="status">GAUNTLET_OS // ONLINE</div>
-            <div id="output">"Awaiting instructions, Sir."</div>
+            <div id="output">"Waiting for command, Sir."</div>
         </div>
     </div>
 
@@ -87,23 +94,22 @@
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor'), container = document.getElementById('suit-container');
         let mediaRecorder, chunks = [], isRotated = false;
 
-        // TWO-WAY ROTATION LOGIC
+        // Forced Button Rotation (Ignores Phone Sensor)
         document.getElementById('flip-btn').addEventListener('click', () => {
             isRotated = !isRotated;
-            container.className = isRotated ? 'rot-right' : '';
+            container.className = isRotated ? 'rot-active' : '';
             if (navigator.vibrate) navigator.vibrate(40);
         });
 
         document.getElementById('init-btn').addEventListener('click', async () => {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             ctx.resume();
-            window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                speak("Gauntlet systems nominal. Welcome back, Sir.");
+                speak("Suit systems nominal. Welcome back, Sir.");
                 document.getElementById('init-screen').style.opacity = '0';
-                setTimeout(() => { document.getElementById('init-screen').style.display = 'none'; }, 500);
+                setTimeout(() => document.getElementById('init-screen').style.display = 'none', 500);
             } catch (e) { alert("Mic required."); }
         });
 
@@ -112,7 +118,7 @@
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
             msg.voice = voices.find(v => v.lang.includes('GB')) || voices[0];
-            msg.rate = 0.9;
+            msg.rate = 0.95;
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
@@ -120,7 +126,6 @@
 
         async function processVoice(blob) {
             status.innerText = "UPLINK_ANALYSIS...";
-            if (navigator.vibrate) navigator.vibrate();
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
             fd.append("model", "whisper-1");
@@ -131,11 +136,10 @@
                 });
                 const data = await res.json();
                 const cmd = data.text.toLowerCase().trim();
-                output.innerText = `"${data.text}"`;
-
+                
                 if (cmd.includes("open") || cmd.includes("run") || cmd.includes("shortcut")) {
                     let sc = cmd.replace("open","").replace("run","").replace("shortcut","").trim();
-                    speak(`Launching ${sc} protocol.`);
+                    speak(`Launching ${sc}.`);
                     window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(sc)}`;
                     return;
                 }
@@ -145,7 +149,7 @@
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ALFRED, a suit AI. Max 20 words. Address user as Sir."}, {role: "user", content: data.text}]
+                        messages: [{role: "system", content: "You are ALFRED, a suit AI. Max 15 words. Address user as Sir."}, {role: "user", content: data.text}]
                     })
                 });
                 const groqData = await groqRes.json();
