@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v18.0</title>
+    <title>ALFRED v18.5</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
@@ -78,7 +78,7 @@
 
         <div id="display-panel">
             <div id="status">GAUNTLET_OS // ONLINE</div>
-            <div id="output">"Neural link ready, Lachie."</div>
+            <div id="output">"Ready for input, Sir."</div>
         </div>
     </div>
 
@@ -113,7 +113,6 @@
         document.getElementById('flip-btn').addEventListener('click', () => {
             isRotated = !isRotated;
             container.classList.toggle('rot-active', isRotated);
-            if (navigator.vibrate) navigator.vibrate(40);
         });
 
         document.getElementById('init-btn').addEventListener('click', async () => {
@@ -124,21 +123,31 @@
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                speak("Alfred initialized. Welcome back, Lachie.");
+                speak("Alfred online.");
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => document.getElementById('init-screen').style.display = 'none', 500);
             } catch (e) { alert("Mic required."); }
         });
 
-        function speak(text) {
+                function speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            msg.voice = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB') || voices[0];
+            
+            // Look for British Male voices specifically
+            const maleBritish = voices.find(v => 
+                (v.lang === 'en-GB' || v.lang === 'en_GB') && 
+                (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david'))
+            );
+            
+            // Fallback to any British voice, then to the first available
+            msg.voice = maleBritish || voices.find(v => v.lang.includes('en-GB')) || voices[0];
+            
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
         }
+
 
         async function processVoice(blob) {
             const fd = new FormData();
@@ -150,20 +159,22 @@
                     method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
-                const cmd = data.text.toLowerCase().trim();
+                // Clean input: remove trailing periods and extra spaces
+                let cmd = data.text.toLowerCase().trim().replace(/\.$/, "");
                 output.innerText = `"${data.text}"`;
 
                 if (cmd.startsWith("play")) {
                     let song = cmd.replace("play", "").trim();
-                    speak(`Playing ${song}, Sir.`);
-                    setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}`; }, 1000);
+                    speak(`Playing ${song}.`);
+                    // Use Search/Play URI to attempt immediate playback
+                    setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}:play`; }, 1000);
                     return;
                 }
 
                 if (cmd.startsWith("open")) {
                     let target = cmd.replace("open","").trim();
                     if (appLinks[target]) {
-                        speak(`Opening ${target}, Sir.`);
+                        speak(`Opening ${target}.`);
                         setTimeout(() => { window.location.href = appLinks[target]; }, 1000);
                         return;
                     }
@@ -171,8 +182,10 @@
 
                 if (cmd.startsWith("run")) {
                     let sc = cmd.replace("run","").trim();
-                    let formatted = sc.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                    speak(`Executing ${formatted} protocol.`);
+                    // Clean periods again for the Shortcut execution specifically
+                    let cleanedSC = sc.replace(/\.$/, "");
+                    let formatted = cleanedSC.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    speak(`Executing ${formatted}.`);
                     setTimeout(() => { window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(formatted)}`; }, 1000);
                     return;
                 }
@@ -185,7 +198,7 @@
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ALFRED, a suit AI. Max 30 words. British, tactical. Address user as Sir or Lachie."}, ...chatHistory]
+                        messages: [{role: "system", content: "You are ALFRED. British. Tactical. Max 20 words. Address user as Sir."}, ...chatHistory]
                     })
                 });
                 const groqData = await groqRes.json();
@@ -198,7 +211,6 @@
 
         async function startListening() {
             try {
-                if (navigator.vibrate) navigator.vibrate(50);
                 const s = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(s);
                 chunks = [];
