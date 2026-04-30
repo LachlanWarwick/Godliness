@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v18.8</title>
+    <title>ALFRED v18.9</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
@@ -30,7 +30,7 @@
             top: calc(50% - 50vw); left: calc(50% - 50vh);
         }
 
-        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; transition: 0.5s; }
+        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.5s; }
         #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); }
 
         #arc-reactor { 
@@ -64,6 +64,7 @@
 
     <div id="init-screen">
         <button id="init-btn">Initialize Suit</button>
+        <p style="font-size: 0.5rem; margin-top: 10px; color: var(--glow); letter-spacing: 2px;">BT-12 UPLINK READY</p>
     </div>
 
     <button id="flip-btn">ROTATE</button>
@@ -78,7 +79,7 @@
 
         <div id="display-panel">
             <div id="status">GAUNTLET_OS // ONLINE</div>
-            <div id="output">"Awaiting instructions, Lord."</div>
+            <div id="output">"Awaiting Bluetooth handshake..."</div>
         </div>
     </div>
 
@@ -88,7 +89,7 @@
         const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
         
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor'), container = document.getElementById('suit-container');
-        let mediaRecorder, chunks = [], isRotated = false, chatHistory = [];
+        let mediaRecorder, chunks = [], isRotated = false, chatHistory = [], wakeLock = null;
 
         const appLinks = {
             "spotify": "spotify://", "instagram": "instagram://", "youtube": "youtube://",
@@ -98,6 +99,12 @@
             "maps": "maps://", "camera": "camera://", "photos": "photos-navigation://",
             "settings": "prefs:root", "music": "music://", "safari": "googlechrome://"
         };
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const silentStream = audioCtx.createMediaStreamDestination();
+        const silence = audioCtx.createOscillator();
+        silence.frequency.value = 0; 
+        silence.connect(silentStream);
 
         async function updateLocation() {
             navigator.geolocation.getCurrentPosition(async (pos) => {
@@ -110,30 +117,48 @@
             });
         }
 
+        async function requestWakeLock() {
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+        }
+
+        function setupMediaSession() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: 'ALFRED OS', artist: 'Stark Industries', album: 'Mark L'
+                });
+                navigator.mediaSession.setActionHandler('play', () => startListening());
+                navigator.mediaSession.setActionHandler('pause', () => stopListening());
+                navigator.mediaSession.setActionHandler('nexttrack', () => startListening());
+                navigator.mediaSession.setActionHandler('previoustrack', () => stopListening());
+            }
+        }
+
         document.getElementById('flip-btn').addEventListener('click', () => {
             isRotated = !isRotated;
             container.classList.toggle('rot-active', isRotated);
         });
 
         document.getElementById('init-btn').addEventListener('click', async () => {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            ctx.resume();
+            await audioCtx.resume();
+            silence.start();
+            requestWakeLock();
+            setupMediaSession();
             updateLocation();
             setInterval(updateLocation, 45000);
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                speak("Alfred online.");
+                speak("Alfred initialized. Tactical link established.");
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => document.getElementById('init-screen').style.display = 'none', 500);
-            } catch (e) { alert("Mic required."); }
+            } catch (e) { alert("Mic required for Neural Link."); }
         });
 
         function speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            // Exact Voice Mode Logic Restored
+            // Restored original en-GB logic
             msg.voice = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB') || voices[0];
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
@@ -201,6 +226,7 @@
         }
 
         async function startListening() {
+            if (mediaRecorder?.state === "recording") return;
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(s);
@@ -209,11 +235,19 @@
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 reactor.classList.add('listening');
+                status.innerText = "LISTENING...";
             } catch(e) { }
         }
 
+        function stopListening() {
+            if(mediaRecorder?.state === "recording") {
+                mediaRecorder.stop();
+                reactor.classList.remove('listening');
+            }
+        }
+
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
-        reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder?.state === "recording") mediaRecorder.stop(); reactor.classList.remove('listening'); });
+        reactor.addEventListener('touchend', (e) => { e.preventDefault(); stopListening(); });
         window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     </script>
 </body>
