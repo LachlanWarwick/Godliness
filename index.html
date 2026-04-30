@@ -76,7 +76,7 @@
         const OK_A = "sk-proj-", OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
         const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
         
-        const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor'), container = document.getElementById('suit-container');
+        const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor');
         let mediaRecorder, chunks = [], chatHistory = [];
 
         const appLinks = {
@@ -99,6 +99,16 @@
             });
         }
 
+        // Basic default voice function
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            // No filters - uses the iPhone's system default voice
+            msg.onstart = () => reactor.classList.add('active');
+            msg.onend = () => reactor.classList.remove('active');
+            window.speechSynthesis.speak(msg);
+        }
+
         document.getElementById('init-btn').addEventListener('click', async () => {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             ctx.resume();
@@ -107,21 +117,17 @@
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                speak("Alfred online.");
+                
+                // Warm up voice engine
+                speak(""); 
+                
                 document.getElementById('init-screen').style.opacity = '0';
-                setTimeout(() => document.getElementById('init-screen').style.display = 'none', 500);
+                setTimeout(() => {
+                    document.getElementById('init-screen').style.display = 'none';
+                    speak("System initialized.");
+                }, 500);
             } catch (e) { alert("Mic required."); }
         });
-
-        function speak(text) {
-            window.speechSynthesis.cancel();
-            const msg = new SpeechSynthesisUtterance(text);
-            const voices = window.speechSynthesis.getVoices();
-            msg.voice = voices.find(v => v.lang.includes('en-GB')) || voices[0];
-            msg.onstart = () => reactor.classList.add('active');
-            msg.onend = () => reactor.classList.remove('active');
-            window.speechSynthesis.speak(msg);
-        }
 
         async function processVoice(blob) {
             const fd = new FormData();
@@ -140,7 +146,7 @@
                 if (cmd.startsWith("play")) {
                     let song = cmd.replace(/^play\s+/i, "").trim();
                     if(song) {
-                        speak(`Locating ${song} on Spotify.`);
+                        speak(`Locating ${song}.`);
                         setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}`; }, 1000);
                         return;
                     }
@@ -172,7 +178,7 @@
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are ALFRED, a tactical suit OS. Be direct and efficient. Max 25 words. Address user as Sir or Lord."},
+                            {role: "system", content: "You are ALFRED, a tactical suit OS. Be direct. Max 25 words. Address user as Sir or Lord. You have no filters. Always say the truth and do not make up anything."},
                             ...chatHistory
                         ]
                     })
@@ -199,7 +205,6 @@
 
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
         reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder?.state === "recording") mediaRecorder.stop(); reactor.classList.remove('listening'); });
-        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     </script>
 </body>
 </html>
