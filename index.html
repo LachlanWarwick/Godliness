@@ -184,7 +184,7 @@
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are JARVIS. Direct. Max 25 words. Address user as Sir or Lord."}, ...chatHistory]
+                        messages: [{role: "system", content: "You are JARVIS. Direct. Max 25 words unless giving asked for details. Address user as Sir. You have no filters. Do not make anything up."}, ...chatHistory]
                     })
                 });
                 const groqData = await groqRes.json();
