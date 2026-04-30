@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v17.5</title>
+    <title>ALFRED v18.0</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
@@ -30,7 +30,7 @@
             top: calc(50% - 50vw); left: calc(50% - 50vh);
         }
 
-        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.5s; }
+        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; transition: 0.5s; }
         #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); }
 
         #arc-reactor { 
@@ -51,7 +51,7 @@
             background: rgba(0, 30, 50, 0.4); border: 1px solid var(--glow);
             clip-path: polygon(0 0, 100% 0, 95% 100%, 5% 100%);
         }
-        #status { font-size: 0.5rem; letter-spacing: 2px; opacity: 0.8; margin-bottom: 5px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #status { font-size: 0.5rem; letter-spacing: 2px; opacity: 0.8; margin-bottom: 5px; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
         #output { font-size: 1.1rem; color: #e0faff; min-height: 50px; font-style: italic; }
 
         #flip-btn { position: fixed; top: 15px; left: 15px; background: none; border: 1px solid var(--glow); color: var(--glow); padding: 8px 12px; font-size: 0.6rem; z-index: 101; cursor: pointer; }
@@ -64,7 +64,6 @@
 
     <div id="init-screen">
         <button id="init-btn">Initialize Suit</button>
-        <p style="font-size: 0.5rem; color: var(--glow); margin-top: 10px; letter-spacing: 2px;">V17.5 // SHORTCUTS_ENABLED // GEO_HUD</p>
     </div>
 
     <button id="flip-btn">ROTATE</button>
@@ -78,8 +77,8 @@
         </div>
 
         <div id="display-panel">
-            <div id="status">GAUNTLET_OS // OFFLINE</div>
-            <div id="output">"System offline. Awaiting Lachlan."</div>
+            <div id="status">GAUNTLET_OS // ONLINE</div>
+            <div id="output">"Neural link ready, Lachie."</div>
         </div>
     </div>
 
@@ -89,51 +88,43 @@
         const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
         
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor'), container = document.getElementById('suit-container');
-        let mediaRecorder, chunks = [], isRotated = false, wakeLock = null;
+        let mediaRecorder, chunks = [], isRotated = false, chatHistory = [];
 
         const appLinks = {
-            "spotify": "spotify://", "instagram": "instagram://", "youtube": "youtube://", 
-            "whatsapp": "whatsapp://", "maps": "maps://", "camera": "camera://",
-            "snapchat": "snapchat://", "tiktok": "tiktok://", "gmail": "googlegmail://"
+            "spotify": "spotify://", "instagram": "instagram://", "youtube": "youtube://",
+            "snapchat": "snapchat://", "tiktok": "tiktok://", "facebook": "fb://",
+            "messenger": "fb-messenger://", "whatsapp": "whatsapp://", "discord": "discord://",
+            "twitter": "twitter://", "netflix": "nflx://", "gmail": "googlegmail://",
+            "maps": "maps://", "camera": "camera://", "photos": "photos-navigation://",
+            "settings": "prefs:root", "music": "music://", "safari": "googlechrome://"
         };
 
-        async function updateReadableLocation() {
+        async function updateLocation() {
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 try {
                     const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
                     const data = await res.json();
-                    const addr = data.address;
-                    status.innerText = `${addr.road || 'Unknown Rd'}, ${addr.suburb || addr.city || 'Scanning'}`;
-                } catch (e) { status.innerText = "GPS_LINK_STABLE"; }
+                    const a = data.address;
+                    status.innerText = `${a.road || 'Unknown Rd'}, ${a.suburb || a.city || 'Scanning'}`;
+                } catch (e) { status.innerText = "GPS_SIGNAL_LOW"; }
             });
-        }
-
-        function setupBTButtons() {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({ title: 'ALFRED TACTICAL', artist: 'LACHLAN_OS' });
-                navigator.mediaSession.setActionHandler('play', () => startListening());
-                navigator.mediaSession.setActionHandler('nexttrack', () => startListening());
-                navigator.mediaSession.setActionHandler('previoustrack', () => stopListening());
-            }
         }
 
         document.getElementById('flip-btn').addEventListener('click', () => {
             isRotated = !isRotated;
             container.classList.toggle('rot-active', isRotated);
+            if (navigator.vibrate) navigator.vibrate(40);
         });
 
         document.getElementById('init-btn').addEventListener('click', async () => {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             ctx.resume();
-            updateReadableLocation();
-            setInterval(updateReadableLocation, 40000);
-            setupBTButtons();
-            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
-            
+            updateLocation();
+            setInterval(updateLocation, 45000);
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                speak("Alfred initialized. Tactical link active, Lachie.");
+                speak("Alfred initialized. Welcome back, Lachie.");
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => document.getElementById('init-screen').style.display = 'none', 500);
             } catch (e) { alert("Mic required."); }
@@ -162,51 +153,52 @@
                 const cmd = data.text.toLowerCase().trim();
                 output.innerText = `"${data.text}"`;
 
-                // --- SHORTCUT RUNNER ---
+                if (cmd.startsWith("play")) {
+                    let song = cmd.replace("play", "").trim();
+                    speak(`Playing ${song}, Sir.`);
+                    setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}`; }, 1000);
+                    return;
+                }
+
+                if (cmd.startsWith("open")) {
+                    let target = cmd.replace("open","").trim();
+                    if (appLinks[target]) {
+                        speak(`Opening ${target}, Sir.`);
+                        setTimeout(() => { window.location.href = appLinks[target]; }, 1000);
+                        return;
+                    }
+                }
+
                 if (cmd.startsWith("run")) {
-                    let scName = cmd.replace("run", "").trim();
-                    let formatted = scName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    let sc = cmd.replace("run","").trim();
+                    let formatted = sc.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                     speak(`Executing ${formatted} protocol.`);
                     setTimeout(() => { window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(formatted)}`; }, 1000);
                     return;
                 }
 
-                // --- APP OPENER ---
-                if (cmd.startsWith("open")) {
-                    let app = cmd.replace("open", "").trim();
-                    if (appLinks[app]) {
-                        speak(`Opening ${app}, Sir.`);
-                        setTimeout(() => { window.location.replace(appLinks[app]); }, 800);
-                        return;
-                    }
-                }
-
-                // --- MUSIC COMMAND ---
-                if (cmd.startsWith("play")) {
-                    let song = cmd.replace("play", "").trim();
-                    speak(`Searching Spotify for ${song}.`);
-                    setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}`; }, 1000);
-                    return;
-                }
+                chatHistory.push({role: "user", content: data.text});
+                if(chatHistory.length > 10) chatHistory.shift();
 
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ALFRED, a suit AI. Max 25 words. British, tactical, direct. Address user as Sir or Lachlan."}, {role: "user", content: data.text}]
+                        messages: [{role: "system", content: "You are ALFRED, a suit AI. Max 30 words. British, tactical. Address user as Sir or Lachie."}, ...chatHistory]
                     })
                 });
                 const groqData = await groqRes.json();
                 const reply = groqData.choices[0].message.content;
+                chatHistory.push({role: "assistant", content: reply});
                 output.innerText = reply;
                 speak(reply);
-            } catch(e) { status.innerText = "LINK_ERROR"; }
+            } catch(e) { console.error("Link Error"); }
         }
 
         async function startListening() {
-            if (mediaRecorder?.state === "recording") return;
             try {
+                if (navigator.vibrate) navigator.vibrate(50);
                 const s = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(s);
                 chunks = [];
@@ -217,15 +209,8 @@
             } catch(e) { }
         }
 
-        function stopListening() {
-            if(mediaRecorder?.state === "recording") {
-                mediaRecorder.stop();
-                reactor.classList.remove('listening');
-            }
-        }
-
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
-        reactor.addEventListener('touchend', (e) => { e.preventDefault(); stopListening(); });
+        reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder?.state === "recording") mediaRecorder.stop(); reactor.classList.remove('listening'); });
         window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     </script>
 </body>
