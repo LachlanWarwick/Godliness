@@ -117,8 +117,7 @@
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            const british = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB');
-            msg.voice = british || voices[0];
+            msg.voice = voices.find(v => v.lang.includes('en-GB')) || voices[0];
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
