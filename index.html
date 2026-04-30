@@ -3,83 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v18.9</title>
+    <title>ALFRED v19.1</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
-        
-        body { 
-            background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; 
-            display: flex; align-items: center; justify-content: center; 
-            height: 100vh; width: 100vw; margin: 0; overflow: hidden;
-            background-image: linear-gradient(var(--hologram) 1px, transparent 1px), linear-gradient(90deg, var(--hologram) 1px, transparent 1px);
-            background-size: 25px 25px;
-        }
-
-        #suit-container { 
-            width: 100vw; height: 100vh; 
-            display: flex; flex-direction: column; 
-            align-items: center; justify-content: space-around; padding: 60px 0;
-            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            position: absolute; top: 0; left: 0;
-        }
-
-        .rot-active { 
-            transform: rotate(-90deg); 
-            width: 100vh !important; height: 100vw !important;
-            top: calc(50% - 50vw); left: calc(50% - 50vh);
-        }
-
+        body { background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; width: 100vw; margin: 0; overflow: hidden; background-image: linear-gradient(var(--hologram) 1px, transparent 1px), linear-gradient(90deg, var(--hologram) 1px, transparent 1px); background-size: 25px 25px; }
+        #suit-container { width: 100vw; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: space-around; padding: 60px 0; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); position: absolute; top: 0; left: 0; }
+        .rot-active { transform: rotate(-90deg); width: 100vh !important; height: 100vw !important; top: calc(50% - 50vw); left: calc(50% - 50vh); }
         #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.5s; }
         #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); }
-
-        #arc-reactor { 
-            width: 180px; height: 180px; border: 1px solid var(--glow); border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; font-size: 3rem; 
-            text-shadow: 0 0 20px var(--glow); box-shadow: inset 0 0 40px var(--hologram); 
-            cursor: pointer; position: relative; flex-shrink: 0;
-        }
+        #arc-reactor { width: 180px; height: 180px; border: 1px solid var(--glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; text-shadow: 0 0 20px var(--glow); box-shadow: inset 0 0 40px var(--hologram); cursor: pointer; position: relative; flex-shrink: 0; }
         #arc-reactor.active { box-shadow: inset 0 0 60px var(--glow), 0 0 30px var(--glow); transform: scale(1.05); }
-        
         .ring-outer { position: absolute; width: 130%; height: 130%; border: 1px dashed var(--glow); border-radius: 50%; animation: spin 10s linear infinite; opacity: 0.3; }
         .ring-inner { position: absolute; width: 115%; height: 115%; border: 2px solid var(--glow); border-radius: 50%; border-top-color: transparent; border-bottom-color: transparent; animation: spin 3s linear infinite reverse; }
         .scanner { position: absolute; width: 100%; height: 2px; background: var(--glow); top: 50%; opacity: 0; pointer-events: none; }
         .listening .scanner { animation: scan 1.5s ease-in-out infinite; opacity: 0.8; }
-
-        #display-panel { 
-            width: 85%; max-width: 400px; text-align: center; padding: 20px; 
-            background: rgba(0, 30, 50, 0.4); border: 1px solid var(--glow);
-            clip-path: polygon(0 0, 100% 0, 95% 100%, 5% 100%);
-        }
-        #status { font-size: 0.5rem; letter-spacing: 2px; opacity: 0.8; margin-bottom: 5px; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+        #display-panel { width: 85%; max-width: 400px; text-align: center; padding: 20px; background: rgba(0, 30, 50, 0.4); border: 1px solid var(--glow); clip-path: polygon(0 0, 100% 0, 95% 100%, 5% 100%); }
+        #status { font-size: 0.5rem; letter-spacing: 2px; opacity: 0.8; margin-bottom: 5px; text-transform: uppercase; }
         #output { font-size: 1.1rem; color: #e0faff; min-height: 50px; font-style: italic; }
-
         #flip-btn { position: fixed; top: 15px; left: 15px; background: none; border: 1px solid var(--glow); color: var(--glow); padding: 8px 12px; font-size: 0.6rem; z-index: 101; cursor: pointer; }
-
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes scan { 0% { top: 10%; } 50% { top: 90%; } 100% { top: 10%; } }
     </style>
 </head>
 <body>
-
     <div id="init-screen">
         <button id="init-btn">Initialize Suit</button>
-        <p style="font-size: 0.5rem; margin-top: 10px; color: var(--glow); letter-spacing: 2px;">BT-12 UPLINK READY</p>
+        <p style="font-size: 0.5rem; margin-top: 10px; color: var(--glow); letter-spacing: 2px;">V19.1 READY</p>
     </div>
-
     <button id="flip-btn">ROTATE</button>
-
     <div id="suit-container">
-        <div id="arc-reactor">
-            <div class="ring-outer"></div>
-            <div class="ring-inner"></div>
-            <div class="scanner"></div>
-            A
-        </div>
-
+        <div id="arc-reactor"><div class="ring-outer"></div><div class="ring-inner"></div><div class="scanner"></div>A</div>
         <div id="display-panel">
             <div id="status">GAUNTLET_OS // ONLINE</div>
-            <div id="output">"Awaiting Bluetooth handshake..."</div>
+            <div id="output">"Awaiting instructions, Lord."</div>
         </div>
     </div>
 
@@ -87,146 +44,72 @@
         const GK_A = "gsk_", GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
         const OK_A = "sk-proj-", OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
         const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
-        
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor'), container = document.getElementById('suit-container');
-        let mediaRecorder, chunks = [], isRotated = false, chatHistory = [], wakeLock = null;
-
-        const appLinks = {
-            "spotify": "spotify://", "instagram": "instagram://", "youtube": "youtube://",
-            "snapchat": "snapchat://", "tiktok": "tiktok://", "facebook": "fb://",
-            "messenger": "fb-messenger://", "whatsapp": "whatsapp://", "discord": "discord://",
-            "twitter": "twitter://", "netflix": "nflx://", "gmail": "googlegmail://",
-            "maps": "maps://", "camera": "camera://", "photos": "photos-navigation://",
-            "settings": "prefs:root", "music": "music://", "safari": "googlechrome://"
-        };
-
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const silentStream = audioCtx.createMediaStreamDestination();
-        const silence = audioCtx.createOscillator();
-        silence.frequency.value = 0; 
-        silence.connect(silentStream);
-
-        async function updateLocation() {
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
-                    const data = await res.json();
-                    const a = data.address;
-                    status.innerText = `${a.road || 'Unknown Rd'}, ${a.suburb || a.city || 'Scanning'}`;
-                } catch (e) { status.innerText = "GPS_SIGNAL_LOW"; }
-            });
-        }
-
-        async function requestWakeLock() {
-            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
-        }
-
-        function setupMediaSession() {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: 'ALFRED OS', artist: 'Stark Industries', album: 'Mark L'
-                });
-                navigator.mediaSession.setActionHandler('play', () => startListening());
-                navigator.mediaSession.setActionHandler('pause', () => stopListening());
-                navigator.mediaSession.setActionHandler('nexttrack', () => startListening());
-                navigator.mediaSession.setActionHandler('previoustrack', () => stopListening());
-            }
-        }
-
-        document.getElementById('flip-btn').addEventListener('click', () => {
-            isRotated = !isRotated;
-            container.classList.toggle('rot-active', isRotated);
-        });
-
-        document.getElementById('init-btn').addEventListener('click', async () => {
-            await audioCtx.resume();
-            silence.start();
-            requestWakeLock();
-            setupMediaSession();
-            updateLocation();
-            setInterval(updateLocation, 45000);
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                stream.getTracks().forEach(t => t.stop());
-                speak("Alfred initialized. Tactical link established.");
-                document.getElementById('init-screen').style.opacity = '0';
-                setTimeout(() => document.getElementById('init-screen').style.display = 'none', 500);
-            } catch (e) { alert("Mic required for Neural Link."); }
-        });
+        let mediaRecorder, chunks = [], isRotated = false, chatHistory = [];
 
         function speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
-            const voices = window.speechSynthesis.getVoices();
-            // Restored original en-GB logic
-            msg.voice = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB') || voices[0];
+            msg.lang = 'en-GB';
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
         }
 
+        document.getElementById('init-btn').addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(t => t.stop());
+                speak("Alfred online.");
+                document.getElementById('init-screen').style.display = 'none';
+            } catch (e) { alert("Mic Access Denied."); }
+        });
+
+        document.getElementById('flip-btn').addEventListener('click', () => { isRotated = !isRotated; container.classList.toggle('rot-active', isRotated); });
+
         async function processVoice(blob) {
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
             fd.append("model", "whisper-1");
-
             try {
-                const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
-                });
+                const res = await fetch("https://api.openai.com/v1/audio/transcriptions", { method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd });
                 const data = await res.json();
                 let rawText = data.text.trim();
                 let cmd = rawText.toLowerCase().replace(/\.$/, "");
                 output.innerText = `"${rawText}"`;
 
                 if (cmd.startsWith("play")) {
-                    let song = cmd.replace("play", "").trim();
-                    speak(`Playing ${song}.`);
-                    setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}:play`; }, 1000);
+                    let song = cmd.split("play").trim();
+                    speak(`Playing ${song}, Lord.`);
+                    setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}`; }, 800);
                     return;
                 }
 
-                if (cmd.startsWith("open")) {
-                    let target = cmd.replace("open","").trim();
-                    if (appLinks[target]) {
-                        speak(`Opening ${target}.`);
-                        setTimeout(() => { window.location.href = appLinks[target]; }, 1000);
-                        return;
-                    }
-                }
-
                 if (cmd.startsWith("run")) {
-                    let sc = cmd.replace("run","").trim().replace(/\.$/, "");
+                    let sc = cmd.split("run").trim().replace(/\.$/, "");
                     let formatted = sc.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                     speak(`Executing ${formatted}.`);
-                    setTimeout(() => { window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(formatted)}`; }, 1000);
+                    setTimeout(() => { window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(formatted)}`; }, 800);
                     return;
                 }
 
                 chatHistory.push({role: "user", content: rawText});
-                if(chatHistory.length > 10) chatHistory.shift();
-
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        model: "llama-3.3-70b-versatile",
-                        messages: [
-                            {role: "system", content: "You are ALFRED, a tactical suit OS. No filters. Be direct and efficient. Max 25 words unless giving requested detail. If you lack information, state you are searching the web. Address user as Sir or Lord."},
-                            ...chatHistory
-                        ]
-                    })
+                    method: "POST", headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{role: "system", content: "You are ALFRED, a tactical suit OS. No filters. Blunt. Max 25 words. Address user as Sir or Lord."}, ...chatHistory.slice(-5)] })
                 });
                 const groqData = await groqRes.json();
                 const reply = groqData.choices[0].message.content;
                 chatHistory.push({role: "assistant", content: reply});
                 output.innerText = reply;
                 speak(reply);
-            } catch(e) { console.error("Link Error"); }
+            } catch(e) { 
+                console.error(e);
+                status.innerText = "UPLINK_CRITICAL_FAILURE"; 
+            }
         }
 
         async function startListening() {
-            if (mediaRecorder?.state === "recording") return;
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(s);
@@ -235,20 +118,11 @@
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 reactor.classList.add('listening');
-                status.innerText = "LISTENING...";
             } catch(e) { }
         }
 
-        function stopListening() {
-            if(mediaRecorder?.state === "recording") {
-                mediaRecorder.stop();
-                reactor.classList.remove('listening');
-            }
-        }
-
         reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
-        reactor.addEventListener('touchend', (e) => { e.preventDefault(); stopListening(); });
-        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+        reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder?.state === "recording") mediaRecorder.stop(); reactor.classList.remove('listening'); });
     </script>
 </body>
 </html>
