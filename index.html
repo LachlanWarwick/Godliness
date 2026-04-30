@@ -85,7 +85,8 @@
             "messenger": "fb-messenger://", "whatsapp": "whatsapp://", "discord": "discord://",
             "twitter": "twitter://", "netflix": "nflx://", "gmail": "googlegmail://",
             "maps": "maps://", "camera": "camera://", "photos": "photos-navigation://",
-            "settings": "prefs:root", "music": "music://", "safari": "googlechrome://"
+            "settings": "prefs:root", "music": "music://", "safari": "googlechrome://",
+            "shortcuts": "shortcuts://"
         };
 
         async function updateLocation() {
@@ -102,40 +103,30 @@
         function speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
-            
-            // Voice Configuration (Male)
             const voices = window.speechSynthesis.getVoices();
             msg.voice = voices.find(v => v.name.includes('Daniel') || v.name.includes('Male')) || voices[0];
             msg.volume = 1;
             msg.rate = 1;
             msg.pitch = 0.9;
-            
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
         }
 
-        // Fixes error when leaving and rejoining app
         document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible" && audioCtx) {
-                audioCtx.resume();
-            }
+            if (document.visibilityState === "visible" && audioCtx) audioCtx.resume();
         });
 
         document.getElementById('init-btn').addEventListener('click', async () => {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             audioCtx.resume();
-            
             const unlockMsg = new SpeechSynthesisUtterance(" ");
             window.speechSynthesis.speak(unlockMsg);
-
             updateLocation();
             setInterval(updateLocation, 45000);
-
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
-                
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => {
                     document.getElementById('init-screen').style.display = 'none';
@@ -148,7 +139,6 @@
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
             fd.append("model", "whisper-1");
-
             try {
                 const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
                     method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
@@ -158,11 +148,22 @@
                 let cmd = rawText.toLowerCase().replace(/\.$/, "");
                 output.innerText = `"${rawText}"`;
 
-                // Logic for "Run [shortcutname]" or "Open [shortcutname]"
-                if (cmd.startsWith("run") || cmd.startsWith("open")) {
-                    let target = cmd.replace(/^(run|open)\s+/i, "").trim();
+                // Handle Running Shortcuts specifically
+                if (cmd.startsWith("run")) {
+                    let shortcutName = cmd.replace("run", "").trim();
+                    if (shortcutName) {
+                        speak(`Executing shortcut ${shortcutName}, Sir.`);
+                        setTimeout(() => { 
+                            window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`; 
+                        }, 1000);
+                        return;
+                    }
+                }
+
+                if (cmd.startsWith("open")) {
+                    let target = cmd.replace("open", "").trim();
                     if (appLinks[target]) {
-                        speak(`Executing ${target}, Sir.`);
+                        speak(`Opening ${target}.`);
                         setTimeout(() => { window.location.href = appLinks[target]; }, 1000);
                         return;
                     }
@@ -178,17 +179,12 @@
                 }
 
                 chatHistory.push({role: "user", content: rawText});
-                if(chatHistory.length > 10) chatHistory.shift();
-
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [
-                            {role: "system", content: "You are JARVIS, a tactical suit OS. Be direct. Max 25 words. Address user as Sir or Lord."},
-                            ...chatHistory
-                        ]
+                        messages: [{role: "system", content: "You are JARVIS. Direct. Max 25 words. Address user as Sir or Lord."}, ...chatHistory]
                     })
                 });
                 const groqData = await groqRes.json();
@@ -196,9 +192,7 @@
                 chatHistory.push({role: "assistant", content: reply});
                 output.innerText = reply;
                 speak(reply);
-            } catch(e) { 
-                speak("System error.");
-            }
+            } catch(e) { speak("System error."); }
         }
 
         async function startListening() {
