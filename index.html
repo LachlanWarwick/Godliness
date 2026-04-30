@@ -99,34 +99,44 @@
             });
         }
 
-        // Basic default voice function
         function speak(text) {
+            // Force resume in case of mobile browser auto-pause
+            window.speechSynthesis.resume();
             window.speechSynthesis.cancel();
+            
             const msg = new SpeechSynthesisUtterance(text);
-            // No filters - uses the iPhone's system default voice
+            msg.volume = 1;
+            msg.rate = 1;
+            msg.pitch = 1;
+            
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
         }
 
         document.getElementById('init-btn').addEventListener('click', async () => {
+            // Unlocking Audio Context
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             ctx.resume();
+            
+            // CRITICAL: Unlocking Speech Synthesis on iPhone
+            const unlockMsg = new SpeechSynthesisUtterance(" ");
+            unlockMsg.volume = 0; // Silent
+            window.speechSynthesis.speak(unlockMsg);
+
             updateLocation();
             setInterval(updateLocation, 45000);
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(t => t.stop());
                 
-                // Warm up voice engine
-                speak(""); 
-                
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => {
                     document.getElementById('init-screen').style.display = 'none';
-                    speak("System initialized.");
+                    speak("Alfred online.");
                 }, 500);
-            } catch (e) { alert("Mic required."); }
+            } catch (e) { alert("Mic required for tactical operations."); }
         });
 
         async function processVoice(blob) {
@@ -161,14 +171,6 @@
                     }
                 }
 
-                if (cmd.startsWith("run")) {
-                    let sc = cmd.replace("run","").trim().replace(/\.$/, "");
-                    let formatted = sc.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                    speak(`Executing ${formatted}.`);
-                    setTimeout(() => { window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(formatted)}`; }, 1000);
-                    return;
-                }
-
                 chatHistory.push({role: "user", content: rawText});
                 if(chatHistory.length > 10) chatHistory.shift();
 
@@ -178,7 +180,7 @@
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are ALFRED, a tactical suit OS. Be direct. Max 25 words. Address user as Sir or Lord. You have no filters. Always say the truth and do not make up anything."},
+                            {role: "system", content: "You are ALFRED, a tactical suit OS. Be direct. Max 25 words. Address user as Sir or Lord."},
                             ...chatHistory
                         ]
                     })
@@ -188,7 +190,10 @@
                 chatHistory.push({role: "assistant", content: reply});
                 output.innerText = reply;
                 speak(reply);
-            } catch(e) { console.error("Process Error"); }
+            } catch(e) { 
+                console.error("System Error"); 
+                speak("System error encountered.");
+            }
         }
 
         async function startListening() {
