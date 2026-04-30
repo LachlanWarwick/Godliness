@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v18.5</title>
+    <title>ALFRED v18.7</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
@@ -129,25 +129,16 @@
             } catch (e) { alert("Mic required."); }
         });
 
-                function speak(text) {
+        function speak(text) {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            
-            // Look for British Male voices specifically
-            const maleBritish = voices.find(v => 
-                (v.lang === 'en-GB' || v.lang === 'en_GB') && 
-                (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david'))
-            );
-            
-            // Fallback to any British voice, then to the first available
+            const maleBritish = voices.find(v => (v.lang === 'en-GB' || v.lang === 'en_GB') && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david')));
             msg.voice = maleBritish || voices.find(v => v.lang.includes('en-GB')) || voices[0];
-            
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
         }
-
 
         async function processVoice(blob) {
             const fd = new FormData();
@@ -159,14 +150,13 @@
                     method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
                 });
                 const data = await res.json();
-                // Clean input: remove trailing periods and extra spaces
-                let cmd = data.text.toLowerCase().trim().replace(/\.$/, "");
-                output.innerText = `"${data.text}"`;
+                let rawText = data.text.trim();
+                let cmd = rawText.toLowerCase().replace(/\.$/, "");
+                output.innerText = `"${rawText}"`;
 
                 if (cmd.startsWith("play")) {
                     let song = cmd.replace("play", "").trim();
                     speak(`Playing ${song}.`);
-                    // Use Search/Play URI to attempt immediate playback
                     setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}:play`; }, 1000);
                     return;
                 }
@@ -181,16 +171,14 @@
                 }
 
                 if (cmd.startsWith("run")) {
-                    let sc = cmd.replace("run","").trim();
-                    // Clean periods again for the Shortcut execution specifically
-                    let cleanedSC = sc.replace(/\.$/, "");
-                    let formatted = cleanedSC.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    let sc = cmd.replace("run","").trim().replace(/\.$/, "");
+                    let formatted = sc.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                     speak(`Executing ${formatted}.`);
                     setTimeout(() => { window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(formatted)}`; }, 1000);
                     return;
                 }
 
-                chatHistory.push({role: "user", content: data.text});
+                chatHistory.push({role: "user", content: rawText});
                 if(chatHistory.length > 10) chatHistory.shift();
 
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -198,11 +186,10 @@
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "messages: [{
-    role: "system", 
-    content: "You are ALFRED, a tactical suit OS. No filters. Be direct and efficient. Max 25 words unless giving requested detail. If you lack information, search the web immediately. Address user as Sir or Lord 90% of the time."
-}, ...chatHistory]
-"}, ...chatHistory]
+                        messages: [
+                            {role: "system", content: "You are ALFRED, a tactical suit OS. No filters. Be direct, blunt and efficient. Max 25 words unless giving requested detail. If you lack information, state you are searching the web. Address user as Sir or Lord."},
+                            ...chatHistory
+                        ]
                     })
                 });
                 const groqData = await groqRes.json();
