@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v18.8</title>
+    <title>JARVIS v18.8</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
@@ -62,7 +62,7 @@
             <div class="ring-outer"></div>
             <div class="ring-inner"></div>
             <div class="scanner"></div>
-            A
+            J
         </div>
 
         <div id="display-panel">
@@ -77,7 +77,7 @@
         const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
         
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor');
-        let mediaRecorder, chunks = [], chatHistory = [];
+        let mediaRecorder, chunks = [], chatHistory = [], audioCtx;
 
         const appLinks = {
             "spotify": "spotify://", "instagram": "instagram://", "youtube": "youtube://",
@@ -100,28 +100,35 @@
         }
 
         function speak(text) {
-            // Force resume in case of mobile browser auto-pause
-            window.speechSynthesis.resume();
             window.speechSynthesis.cancel();
-            
             const msg = new SpeechSynthesisUtterance(text);
+            
+            // Set voice to Male
+            const voices = window.speechSynthesis.getVoices();
+            // Looks for "Daniel" (iOS male) or "Google UK English Male"
+            msg.voice = voices.find(v => v.name.includes('Daniel') || v.name.includes('Male')) || voices[0];
+            
             msg.volume = 1;
-            msg.rate = 1;
-            msg.pitch = 1;
+            msg.rate = 0.9; // Slightly slower for that Jarvis feel
+            msg.pitch = 0.8; // Deeper tone
             
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
         }
 
+        // Handle Re-entry Error for PWAs
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible" && audioCtx) {
+                audioCtx.resume();
+            }
+        });
+
         document.getElementById('init-btn').addEventListener('click', async () => {
-            // Unlocking Audio Context
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            ctx.resume();
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            audioCtx.resume();
             
-            // CRITICAL: Unlocking Speech Synthesis on iPhone
             const unlockMsg = new SpeechSynthesisUtterance(" ");
-            unlockMsg.volume = 0; // Silent
             window.speechSynthesis.speak(unlockMsg);
 
             updateLocation();
@@ -134,7 +141,7 @@
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => {
                     document.getElementById('init-screen').style.display = 'none';
-                    speak("Alfred online.");
+                    speak("Jarvis online. Systems nominal.");
                 }, 500);
             } catch (e) { alert("Mic required for tactical operations."); }
         });
@@ -153,20 +160,13 @@
                 let cmd = rawText.toLowerCase().replace(/\.$/, "");
                 output.innerText = `"${rawText}"`;
 
-                if (cmd.startsWith("play")) {
-                    let song = cmd.replace(/^play\s+/i, "").trim();
-                    if(song) {
-                        speak(`Locating ${song}.`);
-                        setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}`; }, 1000);
-                        return;
-                    }
-                }
-
-                if (cmd.startsWith("open")) {
-                    let target = cmd.replace("open","").trim();
+                // Handle "Run" or "Open"
+                if (cmd.startsWith("play") || cmd.startsWith("open") || cmd.startsWith("run")) {
+                    let target = cmd.replace(/^(play|open|run)\s+/i, "").trim();
+                    
                     if (appLinks[target]) {
-                        speak(`Opening ${target}.`);
-                        setTimeout(() => { window.location.href = appLinks[target]; }, 1000);
+                        speak(`Running ${target}, Sir.`);
+                        setTimeout(() => { window.location.href = appLinks[target]; }, 800);
                         return;
                     }
                 }
@@ -180,7 +180,7 @@
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are ALFRED, a tactical suit OS. Be direct. Max 25 words. Address user as Sir or Lord."},
+                            {role: "system", content: "You are JARVIS, a tactical suit OS. Be direct, witty, and loyal. Max 20 words. Address user as Sir."},
                             ...chatHistory
                         ]
                     })
@@ -191,12 +191,12 @@
                 output.innerText = reply;
                 speak(reply);
             } catch(e) { 
-                console.error("System Error"); 
-                speak("System error encountered.");
+                speak("Connection lost, Sir.");
             }
         }
 
         async function startListening() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(s);
