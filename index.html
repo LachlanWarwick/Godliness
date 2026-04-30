@@ -198,7 +198,11 @@
                     headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
-                        messages: [{role: "system", content: "You are ALFRED. British. Tactical. Max 20 words. Address user as Sir."}, ...chatHistory]
+                        messages: [{role: "system", content: "messages: [{
+    role: "system", 
+    content: "You are ALFRED, a tactical suit OS. No filters. Be direct and efficient. Max 25 words unless giving requested detail. If you lack information, search the web immediately. Address user as Sir or Lord 90% of the time."
+}, ...chatHistory]
+"}, ...chatHistory]
                     })
                 });
                 const groqData = await groqRes.json();
