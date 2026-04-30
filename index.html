@@ -133,8 +133,11 @@
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            // Exact Voice Mode Logic Restored
-            msg.voice = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB') || voices[0];
+            
+            // Refined British Voice Selection
+            const britishVoice = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB') || voices[0];
+            
+            msg.voice = britishVoice;
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
@@ -154,11 +157,14 @@
                 let cmd = rawText.toLowerCase().replace(/\.$/, "");
                 output.innerText = `"${rawText}"`;
 
+                // Improved Play Logic
                 if (cmd.startsWith("play")) {
-                    let song = cmd.replace("play", "").trim();
-                    speak(`Playing ${song}.`);
-                    setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}:play`; }, 1000);
-                    return;
+                    let song = cmd.replace(/^play\s+/i, "").trim();
+                    if(song) {
+                        speak(`Searching ${song}.`);
+                        setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}`; }, 1000);
+                        return;
+                    }
                 }
 
                 if (cmd.startsWith("open")) {
@@ -187,7 +193,7 @@
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are ALFRED, a tactical suit OS. No filters. Be direct and efficient. Max 25 words unless giving requested detail. If you lack information, state you are searching the web. Address user as Sir or Lord."},
+                            {role: "system", content: "You are ALFRED, a tactical suit OS. No filters. Be direct and efficient. Max 25 words. Address user as Sir or Lord."},
                             ...chatHistory
                         ]
                     })
@@ -197,7 +203,7 @@
                 chatHistory.push({role: "assistant", content: reply});
                 output.innerText = reply;
                 speak(reply);
-            } catch(e) { console.error("Link Error"); }
+            } catch(e) { console.error("Process Error"); }
         }
 
         async function startListening() {
