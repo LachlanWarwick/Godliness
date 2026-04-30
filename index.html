@@ -103,21 +103,19 @@
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             
-            // Set voice to Male
+            // Voice Configuration (Male)
             const voices = window.speechSynthesis.getVoices();
-            // Looks for "Daniel" (iOS male) or "Google UK English Male"
             msg.voice = voices.find(v => v.name.includes('Daniel') || v.name.includes('Male')) || voices[0];
-            
             msg.volume = 1;
-            msg.rate = 0.9; // Slightly slower for that Jarvis feel
-            msg.pitch = 0.8; // Deeper tone
+            msg.rate = 1;
+            msg.pitch = 0.9;
             
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
         }
 
-        // Handle Re-entry Error for PWAs
+        // Fixes error when leaving and rejoining app
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible" && audioCtx) {
                 audioCtx.resume();
@@ -141,9 +139,9 @@
                 document.getElementById('init-screen').style.opacity = '0';
                 setTimeout(() => {
                     document.getElementById('init-screen').style.display = 'none';
-                    speak("Jarvis online. Systems nominal.");
+                    speak("Jarvis online.");
                 }, 500);
-            } catch (e) { alert("Mic required for tactical operations."); }
+            } catch (e) { alert("Mic required."); }
         });
 
         async function processVoice(blob) {
@@ -160,13 +158,21 @@
                 let cmd = rawText.toLowerCase().replace(/\.$/, "");
                 output.innerText = `"${rawText}"`;
 
-                // Handle "Run" or "Open"
-                if (cmd.startsWith("play") || cmd.startsWith("open") || cmd.startsWith("run")) {
-                    let target = cmd.replace(/^(play|open|run)\s+/i, "").trim();
-                    
+                // Logic for "Run [shortcutname]" or "Open [shortcutname]"
+                if (cmd.startsWith("run") || cmd.startsWith("open")) {
+                    let target = cmd.replace(/^(run|open)\s+/i, "").trim();
                     if (appLinks[target]) {
-                        speak(`Running ${target}, Sir.`);
-                        setTimeout(() => { window.location.href = appLinks[target]; }, 800);
+                        speak(`Executing ${target}, Sir.`);
+                        setTimeout(() => { window.location.href = appLinks[target]; }, 1000);
+                        return;
+                    }
+                }
+
+                if (cmd.startsWith("play")) {
+                    let song = cmd.replace(/^play\s+/i, "").trim();
+                    if(song) {
+                        speak(`Locating ${song}.`);
+                        setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}`; }, 1000);
                         return;
                     }
                 }
@@ -180,7 +186,7 @@
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are JARVIS, a tactical suit OS. Be direct, witty, and loyal. Max 20 words. Address user as Sir."},
+                            {role: "system", content: "You are JARVIS, a tactical suit OS. Be direct. Max 25 words. Address user as Sir or Lord."},
                             ...chatHistory
                         ]
                     })
@@ -191,12 +197,12 @@
                 output.innerText = reply;
                 speak(reply);
             } catch(e) { 
-                speak("Connection lost, Sir.");
+                speak("System error.");
             }
         }
 
         async function startListening() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(s);
