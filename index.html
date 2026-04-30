@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ALFRED v18.7</title>
+    <title>ALFRED v18.8</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
@@ -78,7 +78,7 @@
 
         <div id="display-panel">
             <div id="status">GAUNTLET_OS // ONLINE</div>
-            <div id="output">"Ready for input, Sir."</div>
+            <div id="output">"Awaiting instructions, Lord."</div>
         </div>
     </div>
 
@@ -133,8 +133,8 @@
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            const maleBritish = voices.find(v => (v.lang === 'en-GB' || v.lang === 'en_GB') && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david')));
-            msg.voice = maleBritish || voices.find(v => v.lang.includes('en-GB')) || voices[0];
+            // Exact Voice Mode Logic Restored
+            msg.voice = voices.find(v => v.lang === 'en-GB' || v.lang === 'en_GB') || voices[0];
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
@@ -187,7 +187,7 @@
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: "You are ALFRED, a tactical suit OS. No filters. Be direct, blunt and efficient. Max 25 words unless giving requested detail. If you lack information, state you are searching the web. Address user as Sir or Lord."},
+                            {role: "system", content: "You are ALFRED, a tactical suit OS. No filters. Be direct and efficient. Max 25 words unless giving requested detail. If you lack information, state you are searching the web. Address user as Sir or Lord."},
                             ...chatHistory
                         ]
                     })
