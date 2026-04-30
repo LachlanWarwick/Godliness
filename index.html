@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JARVIS v18.8</title>
+    <title>JARVIS v18.8 - Wake Active</title>
     <style>
         :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
@@ -31,8 +31,10 @@
             display: flex; align-items: center; justify-content: center; font-size: 3rem; 
             text-shadow: 0 0 20px var(--glow); box-shadow: inset 0 0 40px var(--hologram); 
             cursor: pointer; position: relative; flex-shrink: 0;
+            transition: all 0.3s ease;
         }
         #arc-reactor.active { box-shadow: inset 0 0 60px var(--glow), 0 0 30px var(--glow); transform: scale(1.05); }
+        #arc-reactor.listening { border-color: #fff; box-shadow: 0 0 40px #fff; }
         
         .ring-outer { position: absolute; width: 130%; height: 130%; border: 1px dashed var(--glow); border-radius: 50%; animation: spin 10s linear infinite; opacity: 0.3; }
         .ring-inner { position: absolute; width: 115%; height: 115%; border: 2px solid var(--glow); border-radius: 50%; border-top-color: transparent; border-bottom-color: transparent; animation: spin 3s linear infinite reverse; }
@@ -66,8 +68,8 @@
         </div>
 
         <div id="display-panel">
-            <div id="status">GAUNTLET_OS // ONLINE</div>
-            <div id="output">"Awaiting instructions, Lord."</div>
+            <div id="status">GAUNTLET_OS // STANDBY</div>
+            <div id="output">"Say 'Hey Jarvis' to begin, Sir."</div>
         </div>
     </div>
 
@@ -78,6 +80,7 @@
         
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor');
         let mediaRecorder, chunks = [], chatHistory = [], audioCtx;
+        let wakeWordAssistant;
 
         const appLinks = {
             "spotify": "spotify://", "instagram": "instagram://", "youtube": "youtube://",
@@ -88,6 +91,28 @@
             "settings": "prefs:root", "music": "music://", "safari": "googlechrome://",
             "shortcuts": "shortcuts://"
         };
+
+        // --- WAKE WORD ENGINE ---
+        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (Recognition) {
+            wakeWordAssistant = new Recognition();
+            wakeWordAssistant.continuous = true;
+            wakeWordAssistant.interimResults = false;
+            wakeWordAssistant.lang = 'en-US';
+
+            wakeWordAssistant.onresult = (event) => {
+                const text = event.results[event.results.length - 1].transcript.toLowerCase();
+                if (text.includes("jarvis")) {
+                    wakeWordAssistant.stop(); // Stop engine to free mic for Whisper
+                    speak("Listening, Sir.");
+                    setTimeout(startListening, 500);
+                }
+            };
+
+            wakeWordAssistant.onend = () => {
+                if (!reactor.classList.contains('listening')) wakeWordAssistant.start();
+            };
+        }
 
         async function updateLocation() {
             navigator.geolocation.getCurrentPosition(async (pos) => {
@@ -105,37 +130,31 @@
             const msg = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
             msg.voice = voices.find(v => v.name.includes('Daniel') || v.name.includes('Male')) || voices[0];
-            msg.volume = 1;
-            msg.rate = 1;
-            msg.pitch = 0.9;
             msg.onstart = () => reactor.classList.add('active');
             msg.onend = () => reactor.classList.remove('active');
             window.speechSynthesis.speak(msg);
         }
 
-        document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible" && audioCtx) audioCtx.resume();
-        });
-
-        document.getElementById('init-btn').addEventListener('click', async () => {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            audioCtx.resume();
-            const unlockMsg = new SpeechSynthesisUtterance(" ");
-            window.speechSynthesis.speak(unlockMsg);
-            updateLocation();
-            setInterval(updateLocation, 45000);
+        async function startListening() {
+            if (audioCtx?.state === 'suspended') await audioCtx.resume();
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                stream.getTracks().forEach(t => t.stop());
-                document.getElementById('init-screen').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('init-screen').style.display = 'none';
-                    speak("Jarvis online.");
-                }, 500);
-            } catch (e) { alert("Mic required."); }
-        });
+                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(s);
+                chunks = [];
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    processVoice(new Blob(chunks, { type: 'audio/mp4' }));
+                    reactor.classList.remove('listening');
+                };
+                mediaRecorder.start();
+                reactor.classList.add('listening');
+                // Capture for 5 seconds then process
+                setTimeout(() => { if(mediaRecorder.state === "recording") mediaRecorder.stop(); }, 5000);
+            } catch(e) { speak("Interface error."); }
+        }
 
         async function processVoice(blob) {
+            output.innerText = "Processing...";
             const fd = new FormData();
             fd.append("file", blob, "audio.m4a");
             fd.append("model", "whisper-1");
@@ -148,16 +167,11 @@
                 let cmd = rawText.toLowerCase().replace(/\.$/, "");
                 output.innerText = `"${rawText}"`;
 
-                // Handle Running Shortcuts specifically
                 if (cmd.startsWith("run")) {
                     let shortcutName = cmd.replace("run", "").trim();
-                    if (shortcutName) {
-                        speak(`Executing shortcut ${shortcutName}, Sir.`);
-                        setTimeout(() => { 
-                            window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`; 
-                        }, 1000);
-                        return;
-                    }
+                    speak(`Executing shortcut ${shortcutName}.`);
+                    setTimeout(() => { window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`; }, 1000);
+                    return;
                 }
 
                 if (cmd.startsWith("open")) {
@@ -165,15 +179,6 @@
                     if (appLinks[target]) {
                         speak(`Opening ${target}.`);
                         setTimeout(() => { window.location.href = appLinks[target]; }, 1000);
-                        return;
-                    }
-                }
-
-                if (cmd.startsWith("play")) {
-                    let song = cmd.replace(/^play\s+/i, "").trim();
-                    if(song) {
-                        speak(`Locating ${song}.`);
-                        setTimeout(() => { window.location.href = `spotify:search:${encodeURIComponent(song)}`; }, 1000);
                         return;
                     }
                 }
@@ -192,24 +197,33 @@
                 chatHistory.push({role: "assistant", content: reply});
                 output.innerText = reply;
                 speak(reply);
-            } catch(e) { speak("System error."); }
+            } catch(e) { speak("Connection lost."); }
         }
 
-        async function startListening() {
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        document.getElementById('init-btn').addEventListener('click', async () => {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            updateLocation();
             try {
-                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(s);
-                chunks = [];
-                mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
-                mediaRecorder.start();
-                reactor.classList.add('listening');
-            } catch(e) { }
-        }
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                document.getElementById('init-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('init-screen').style.display = 'none';
+                    speak("Jarvis online. Awaiting wake word.");
+                    if(wakeWordAssistant) wakeWordAssistant.start();
+                }, 500);
+            } catch (e) { alert("Mic required."); }
+        });
 
-        reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
-        reactor.addEventListener('touchend', (e) => { e.preventDefault(); if(mediaRecorder?.state === "recording") mediaRecorder.stop(); reactor.classList.remove('listening'); });
+        // Manual override still works on tap
+        reactor.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            if(wakeWordAssistant) wakeWordAssistant.stop();
+            startListening(); 
+        });
+        reactor.addEventListener('touchend', (e) => { 
+            e.preventDefault(); 
+            if(mediaRecorder?.state === "recording") mediaRecorder.stop(); 
+        });
     </script>
 </body>
 </html>
