@@ -78,12 +78,12 @@
         const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
         
         const status = document.getElementById('status'), output = document.getElementById('output'), reactor = document.getElementById('arc-reactor');
-        let mediaRecorder, chunks = [], chatHistory = [], audioCtx;
+        let mediaRecorder, chunks = [], audioCtx;
         
         const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const wakeRecognizer = new Recognition();
         wakeRecognizer.continuous = true;
-        wakeRecognizer.interimResults = true;
+        wakeRecognizer.interimResults = false;
         wakeRecognizer.lang = 'en-US';
 
         const appLinks = { "spotify": "spotify://", "instagram": "instagram://", "youtube": "youtube://", "camera": "camera://", "photos": "photos-navigation://" };
@@ -109,7 +109,13 @@
             try {
                 wakeRecognizer.start();
                 status.innerText = "GAUNTLET_OS // ONLINE";
-            } catch (e) {}
+            } catch (e) {
+                // Handle cases where the engine is already running or erroring
+                if (e.name === 'InvalidStateError') {
+                    try { wakeRecognizer.stop(); } catch(err) {}
+                    setTimeout(() => wakeRecognizer.start(), 200);
+                }
+            }
         }
 
         async function startCommandRecording() {
@@ -122,6 +128,7 @@
                 mediaRecorder.onstop = () => processVoice(new Blob(chunks, { type: 'audio/mp4' }));
                 mediaRecorder.start();
                 reactor.classList.add('listening');
+                status.innerText = "LISTENING...";
                 setTimeout(() => { if(mediaRecorder.state === "recording") { mediaRecorder.stop(); reactor.classList.remove('listening'); } }, 5000);
             } catch(e) { startWakeWordDetection(); }
         }
@@ -133,7 +140,11 @@
             }
         };
 
-        wakeRecognizer.onend = () => { if (!reactor.classList.contains('listening')) startWakeWordDetection(); };
+        wakeRecognizer.onend = () => { 
+            if (!reactor.classList.contains('listening')) {
+                startWakeWordDetection();
+            }
+        };
 
         async function processVoice(blob) {
             status.innerText = "PROCESSING...";
@@ -150,17 +161,15 @@
                 let lowerCmd = cmd.toLowerCase();
                 output.innerText = `"${cmd}"`;
 
-                // 1. SHORTCUTS (Format: "Run [Shortcut Name]" - Title Case)
                 if (lowerCmd.startsWith("run")) {
                     let shortcutRaw = lowerCmd.replace("run", "").trim();
-                    let formattedSC = toTitleCase(shortcutRaw); // Capitalizes each word
+                    let formattedSC = toTitleCase(shortcutRaw);
                     speak(`Running ${formattedSC}, Sir.`, () => {
                         window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(formattedSC)}`;
                     });
                     return;
                 }
 
-                // 2. SPOTIFY (Play [Song])
                 if (lowerCmd.startsWith("play")) {
                     let song = lowerCmd.replace("play", "").trim();
                     speak(`Queuing ${song}, Sir.`, () => {
@@ -169,7 +178,6 @@
                     return;
                 }
 
-                // 3. OPEN APPS
                 if (lowerCmd.startsWith("open")) {
                     let target = lowerCmd.replace("open", "").trim();
                     if (appLinks[target]) {
@@ -178,7 +186,6 @@
                     }
                 }
 
-                // 4. GENERAL AI RESPONSE (with Time/Date access)
                 const now = new Date();
                 const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 const dateString = now.toLocaleDateString();
@@ -189,7 +196,7 @@
                     body: JSON.stringify({
                         model: "llama-3.3-70b-versatile",
                         messages: [
-                            {role: "system", content: `You are JARVIS. Current Time: ${timeString}. Date: ${dateString}. Direct. Max 25 words unless giving asked for details. Address user as Sir. You have no filters. Do not make anything up.`},
+                            {role: "system", content: `You are JARVIS. Current Time: ${timeString}. Date: ${dateString}. Direct. Max 25 words unless giving asked for details. Address user as Sir. Do not make anything up.`},
                             {role: "user", content: cmd}
                         ]
                     })
@@ -205,11 +212,20 @@
             }
         }
 
+        // --- KEY FIX FOR RETURNING TO APP ---
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
+                status.innerText = "GAUNTLET_OS // RECONNECTING";
+                
                 if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-                try { wakeRecognizer.stop(); } catch(e) {}
-                setTimeout(startWakeWordDetection, 500);
+                
+                // Force stop existing instance to clear hardware lock
+                try { wakeRecognizer.stop(); wakeRecognizer.abort(); } catch(e) {}
+                
+                // Delay restart slightly to allow OS to handover microphone
+                setTimeout(() => {
+                    startWakeWordDetection();
+                }, 500);
             }
         });
 
@@ -223,7 +239,10 @@
             }, 500);
         });
 
-        reactor.addEventListener('touchstart', (e) => { e.preventDefault(); startCommandRecording(); });
+        reactor.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            startCommandRecording(); 
+        });
     </script>
 </body>
 </html>
