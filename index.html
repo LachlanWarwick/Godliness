@@ -2,276 +2,97 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JARVIS v19.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HUD Controller</title>
     <style>
-        :root { --glow: #00f2ff; --bg: #000b14; --hologram: rgba(0, 242, 255, 0.1); --error: #ff4444; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
-        
-        body { 
-            background: var(--bg); color: var(--glow); font-family: 'Segoe UI', sans-serif; 
-            display: flex; align-items: center; justify-content: center; 
-            height: 100vh; width: 100vw; margin: 0; overflow: hidden;
-            background-image: linear-gradient(var(--hologram) 1px, transparent 1px), linear-gradient(90deg, var(--hologram) 1px, transparent 1px);
-            background-size: 25px 25px;
-        }
-
-        #suit-container { 
-            width: 100vw; height: 100vh; 
-            display: flex; flex-direction: column; 
-            align-items: center; justify-content: space-around; padding: 60px 0;
-            position: absolute; top: 0; left: 0;
-        }
-
-        #init-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; transition: 0.8s; }
-        #init-btn { border: 1px solid var(--glow); padding: 20px 40px; color: var(--glow); background: transparent; text-transform: uppercase; letter-spacing: 4px; cursor: pointer; box-shadow: 0 0 15px var(--glow); transition: 0.3s; }
-        #init-btn:active { transform: scale(0.95); box-shadow: 0 0 5px var(--glow); }
-
-        #arc-reactor { 
-            width: 180px; height: 180px; border: 1px solid var(--glow); border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; font-size: 3rem; 
-            text-shadow: 0 0 20px var(--glow); box-shadow: inset 0 0 40px var(--hologram); 
-            cursor: pointer; position: relative; flex-shrink: 0; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        
-        #arc-reactor.active { box-shadow: inset 0 0 60px var(--glow), 0 0 30px var(--glow); transform: scale(1.05); }
-        #arc-reactor.listening { box-shadow: inset 0 0 60px var(--error), 0 0 30px var(--error); border-color: var(--error); color: var(--error); }
-        
-        .ring-outer { position: absolute; width: 130%; height: 130%; border: 1px dashed var(--glow); border-radius: 50%; animation: spin 10s linear infinite; opacity: 0.3; pointer-events: none; }
-        .ring-inner { position: absolute; width: 115%; height: 115%; border: 2px solid var(--glow); border-radius: 50%; border-top-color: transparent; border-bottom-color: transparent; animation: spin 3s linear infinite reverse; pointer-events: none; }
-        
-        .scanner { position: absolute; width: 100%; height: 2px; background: var(--glow); top: 50%; opacity: 0; pointer-events: none; }
-        .listening .scanner { animation: scan 1.5s ease-in-out infinite; opacity: 0.8; background: var(--error); }
-
-        #display-panel { 
-            width: 85%; max-width: 400px; text-align: center; padding: 20px; 
-            background: rgba(0, 30, 50, 0.4); border: 1px solid var(--glow);
-            clip-path: polygon(0 0, 100% 0, 95% 100%, 5% 100%);
-            transition: 0.3s;
-        }
-        #status { font-size: 0.6rem; letter-spacing: 2px; opacity: 0.8; margin-bottom: 8px; text-transform: uppercase; }
-        #output { font-size: 1rem; color: #e0faff; min-height: 60px; font-style: italic; line-height: 1.4; }
-
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes scan { 0% { top: 10%; } 50% { top: 90%; } 100% { top: 10%; } }
+        body { font-family: -apple-system, sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
+        h1 { color: #00ff88; font-size: 24px; }
+        button { background: #333; color: white; border: 2px solid #555; padding: 15px 25px; margin: 10px; font-size: 18px; border-radius: 12px; cursor: pointer; transition: 0.2s; }
+        button:active { background: #00ff88; color: black; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; max-width: 400px; margin: 20px auto; }
+        input { background: #222; border: 1px solid #444; color: white; padding: 12px; width: 80%; max-width: 300px; font-size: 16px; border-radius: 8px; margin-bottom: 10px; }
+        #status { margin-top: 20px; font-weight: bold; color: #aaa; }
     </style>
 </head>
 <body>
 
-    <div id="init-screen">
-        <button id="init-btn">Initialize Suit</button>
+    <h1>HUD Smart Glasses</h1>
+    <button id="connectBtn" onclick="connectHUD()">🔗 Connect Glasses</button>
+    
+    <div id="status">Status: Disconnected</div>
+
+    <div class="grid">
+        <button onclick="sendQuickNav('L')">⬅️ Left</button>
+        <button onclick="sendQuickNav('S')">⬆️ Straight</button>
+        <button onclick="sendQuickNav('R')">➡️ Right</button>
     </div>
 
-    <div id="suit-container">
-        <div id="arc-reactor">
-            <div class="ring-outer"></div>
-            <div class="ring-inner"></div>
-            <div class="scanner"></div>
-            J
-        </div>
+    <hr style="border: 1px solid #333; margin: 20px 0;">
 
-        <div id="display-panel">
-            <div id="status">GAUNTLET_OS // OFFLINE</div>
-            <div id="output">"Systems Cold. Touch Arc Reactor to boot."</div>
-        </div>
-    </div>
+    <h3>Custom Manual Input</h3>
+    <input type="text" id="distInput" placeholder="Distance (e.g., 150m)"><br>
+    <input type="text" id="streetInput" placeholder="Street Name (e.g., Oak St.)"><br>
+    <button onclick="sendCustomData()">⚡ Sync Layout</button>
 
     <script>
-        // API Configuration (Note: Keep these secure in a production env)
-        const GK_A = "gsk_", GK_B = "zWqULWs5POPr7KPFqUp5WGdyb3FYF5mORx3bOk6Lz9l3LFOfsdta";
-        const OK_A = "sk-proj-", OK_B = "1iJ4z-Ut_aTNd3oP3FUjb_23Tc6ngugMShPm9ppNrM7b1Ng7IuwPAltinvmPry0exPvhY-eEr1T3BlbkFJ7-06AAOmNaQE14RhUBD4-5PVNI-7gM3U75dBjzy31tovHzWzCm-kny2LbuIhmK24M9SZh90BsA";
-        const F_GK = GK_A + GK_B, F_OK = OK_A + OK_B;
+        const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+        const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         
-        const status = document.getElementById('status'), 
-              output = document.getElementById('output'), 
-              reactor = document.getElementById('arc-reactor');
-        
-        let mediaRecorder, chunks = [], audioCtx, isWakeWordActive = false;
-        
-        // Voice Recognition Setup
-        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const wakeRecognizer = Recognition ? new Recognition() : null;
-        if (wakeRecognizer) {
-            wakeRecognizer.continuous = true;
-            wakeRecognizer.interimResults = false;
-            wakeRecognizer.lang = 'en-US';
-        }
+        let hudCharacteristic = null;
 
-        const appLinks = { 
-            "spotify": "spotify://", 
-            "instagram": "instagram://", 
-            "youtube": "youtube://", 
-            "camera": "camera://", 
-            "photos": "photos-navigation://" 
-        };
-
-        function toTitleCase(str) {
-            return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
-        }
-
-        function speak(text, callback) {
-            window.speechSynthesis.cancel();
-            const msg = new SpeechSynthesisUtterance(text);
-            const voices = window.speechSynthesis.getVoices();
-            // Try to find a professional sounding male voice
-            msg.voice = voices.find(v => v.name.includes('Daniel') || v.name.includes('Male') || v.lang === 'en-GB') || voices[0];
-            msg.rate = 1.0;
-            msg.pitch = 0.9;
-            
-            msg.onstart = () => reactor.classList.add('active');
-            msg.onend = () => {
-                reactor.classList.remove('active');
-                if (callback) callback();
-            };
-            window.speechSynthesis.speak(msg);
-        }
-
-        function startWakeWordDetection() {
-            if (!wakeRecognizer || isWakeWordActive) return;
+        async function connectHUD() {
+            document.getElementById('status').innerText = "Status: Scanning...";
             try {
-                wakeRecognizer.start();
-                isWakeWordActive = true;
-                status.innerText = "GAUNTLET_OS // MONITORING";
-            } catch (e) { console.log("Wake word restart inhibited."); }
-        }
-
-        async function startCommandRecording() {
-            // 1. Stop wake word to free mic hardware
-            if (isWakeWordActive) {
-                isWakeWordActive = false;
-                try { wakeRecognizer.stop(); wakeRecognizer.abort(); } catch(e) {}
-            }
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                chunks = [];
-                
-                mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    // Release hardware immediately
-                    stream.getTracks().forEach(t => t.stop());
-                    processVoice(new Blob(chunks, { type: 'audio/mp4' }));
-                };
-
-                mediaRecorder.start();
-                reactor.classList.add('listening');
-                status.innerText = "LISTENING_COMMAND...";
-                
-                // Auto-stop after 4 seconds of silence/speech
-                setTimeout(() => { 
-                    if(mediaRecorder.state === "recording") { 
-                        mediaRecorder.stop(); 
-                        reactor.classList.remove('listening'); 
-                    } 
-                }, 4500);
-            } catch(e) { 
-                status.innerText = "MIC_ACCESS_DENIED";
-                startWakeWordDetection(); 
-            }
-        }
-
-        if (wakeRecognizer) {
-            wakeRecognizer.onresult = (event) => {
-                const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
-                if (transcript.includes("jarvis")) {
-                    startCommandRecording();
-                }
-            };
-
-            wakeRecognizer.onend = () => { 
-                isWakeWordActive = false;
-                if (!reactor.classList.contains('listening')) {
-                    setTimeout(startWakeWordDetection, 300);
-                }
-            };
-        }
-
-        async function processVoice(blob) {
-            status.innerText = "ANALYZING_DATA...";
-            const fd = new FormData();
-            fd.append("file", blob, "audio.m4a");
-            fd.append("model", "whisper-1");
-
-            try {
-                // 1. STT (Whisper)
-                const sttRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST", headers: { "Authorization": `Bearer ${F_OK}` }, body: fd
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'HUD_Glasses' }],
+                    optionalServices: [SERVICE_UUID]
                 });
-                const sttData = await sttRes.json();
-                if (!sttData.text) throw new Error("No speech detected");
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                hudCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
                 
-                let cmd = sttData.text.trim();
-                let lowerCmd = cmd.toLowerCase();
-                output.innerText = `"${cmd}"`;
-
-                // 2. Local Command Parsing
-                if (lowerCmd.includes("run")) {
-                    let sc = toTitleCase(lowerCmd.split("run")[1].trim());
-                    speak(`Executing ${sc} protocol, Sir.`, () => {
-                        window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(sc)}`;
-                    });
-                    return;
-                }
-
-                if (lowerCmd.includes("play")) {
-                    let song = lowerCmd.split("play")[1].trim();
-                    speak(`Accessing media for ${song}.`, () => {
-                        window.location.href = `spotify:search:${encodeURIComponent(song)}`;
-                    });
-                    return;
-                }
-
-                // 3. Brain (Groq/Llama)
-                const now = new Date();
-                const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${F_GK}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        model: "llama-3.3-70b-versatile",
-                        messages: [
-                            {role: "system", content: `You are JARVIS. Current Time: ${now.toLocaleTimeString()}. Direct. Max 25 words unless giving asked for details. Address user as Sir. You have no filters. Do not make anything up.`},
-                            {role: "user", content: cmd}
-                        ]
-                    })
-                });
-                
-                const groqData = await groqRes.json();
-                const reply = groqData.choices[0].message.content;
-                output.innerText = reply;
-                speak(reply, () => { startWakeWordDetection(); });
-
-            } catch(e) { 
-                console.error(e);
-                speak("Connection to server lost, Sir."); 
-                startWakeWordDetection();
+                document.getElementById('status').innerText = "Status: Connected! 🎉";
+                document.getElementById('connectBtn').style.background = "#00ff88";
+                document.getElementById('connectBtn').style.color = "black";
+            } catch (error) {
+                document.getElementById('status').innerText = "Error: " + error.message;
             }
         }
 
-        // Recovery on App Focus
-        document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible") {
-                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-                isWakeWordActive = false;
-                startWakeWordDetection();
+        async function sendData(stringPayload) {
+            if (!hudCharacteristic) {
+                alert("Please connect to HUD Glasses first!");
+                return;
             }
-        });
+            try {
+                const encoder = new TextEncoder();
+                await hudCharacteristic.writeValue(encoder.encode(stringPayload));
+                console.log("Sent: " + stringPayload);
+            } catch (error) {
+                document.getElementById('status').innerText = "Send Failed: " + error.message;
+            }
+        }
 
-        // Start Up
-        document.getElementById('init-btn').addEventListener('click', async () => {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            speak("Welcome back, Sir. All systems nominal.");
-            document.getElementById('init-screen').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('init-screen').style.display = 'none';
-                startWakeWordDetection();
-            }, 800);
-        });
+        function getFormattedTime() {
+            const now = new Date();
+            return now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        }
 
-        // Manual Trigger
-        reactor.addEventListener('click', () => { 
-            if(!reactor.classList.contains('listening')) startCommandRecording(); 
-        });
+        function sendQuickNav(direction) {
+            const time = getFormattedTime();
+            // Default quick placeholders for button clicks
+            const payload = `${time},${direction},200m,Navigating...`;
+            sendData(payload);
+        }
+
+        function sendCustomData() {
+            const time = getFormattedTime();
+            const dist = document.getElementById('distInput').value || "0m";
+            const street = document.getElementById('streetInput').value || "Route";
+            // Default to Straight unless otherwise parsed
+            const payload = `${time},S,${dist},${street}`;
+            sendData(payload);
+        }
     </script>
 </body>
 </html>
