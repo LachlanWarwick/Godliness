@@ -64,7 +64,7 @@
         // Initialize Map and GPS tracking hooks immediately when page loads
         window.onload = () => {
             // Setup base map layer centered at default coordinates
-            map = L.map('map').setView(, 2);
+            map = L.map('map').setView([0,0], 2);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
