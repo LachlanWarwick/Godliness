@@ -25,6 +25,7 @@
     <h1>HUD Smart Glasses Control</h1>
     <div id="clock">00:00:00</div>
     <audio id="silentKeepAlive" loop src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAAAD"></audio>
+    
     <button id="connectBtn" onclick="connectHUD()">🔗 Connect Glasses</button>
     <div id="status">Status: Disconnected</div>
 
@@ -53,7 +54,6 @@
         let hudCharacteristic = null;
         let map, userMarker, routingControl;
         
-        // Telemetry Variables
         let currentLat = null, currentLng = null;
         let currentSpeed = "0km/h";
         let currentHeading = "0°";
@@ -62,7 +62,7 @@
         let lastDistance = "0m";
         let lastStreet = "Ready...";
 
-        // 1. LIVE CLOCK LOOP (Fires every second)
+        // 1. LIVE CLOCK LOOP
         setInterval(() => {
             const now = new Date();
             const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
@@ -81,14 +81,13 @@
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            // 2. UPGRADED GPS WATCHER (Captures Speed)
+            // 2. LIVE GPS DEVICE POSITION WATCHER
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition((position) => {
                     currentLat = position.coords.latitude;
                     currentLng = position.coords.longitude;
                     const newPos = [currentLat, currentLng];
                     
-                    // Calculate speed from meters/second to km/h
                     if (position.coords.speed !== null && position.coords.speed > 0) {
                         const kmh = Math.round(position.coords.speed * 3.6);
                         currentSpeed = kmh + "km/h";
@@ -113,9 +112,8 @@
                 });
             }
 
-            // 3. IPHONE COMPASS SENSOR ACTIVATION
+            // 3. DIGITAL COMPASS HOOK
             if (window.DeviceOrientationEvent) {
-                // iOS Safari requires explicit permission to read the compass sensor
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                     document.body.addEventListener('click', () => {
                         DeviceOrientationEvent.requestPermission()
@@ -129,16 +127,22 @@
                     window.addEventListener('deviceorientation', handleOrientation, true);
                 }
             }
+
+            // Map Click Intersection Handler
+            map.on('click', function(e) {
+                if (currentLat === null) {
+                    alert("Waiting for GPS position fix...");
+                    return;
+                }
+                setupRoute(e.latlng.lat, e.latlng.lng);
+            });
         };
 
-        // Processes compass orientation angles
         function handleOrientation(event) {
             let heading = event.webkitCompassHeading || event.alpha;
             if (heading !== null && heading !== undefined) {
-                // Round to whole numbers
                 let degrees = Math.round(heading);
                 
-                // Determine cardinal direction tag
                 let directionTag = "N";
                 if (degrees > 22 && degrees <= 67) directionTag = "NE";
                 else if (degrees > 67 && degrees <= 112) directionTag = "E";
@@ -165,7 +169,7 @@
             routingControl.on('routesfound', function(e) {
                 const steps = e.routes.instructions;
                 if (steps && steps.length > 0) {
-                    const nextStep = steps; 
+                    const nextStep = steps[0]; 
                     lastDistance = Math.round(nextStep.distance) + "m";
                     lastStreet = nextStep.road || "Continue";
                     
@@ -182,8 +186,7 @@
         }
 
         async function connectHUD() {
-            document.getElementById('silentKeepAlive').play().catch(err => console.log("Audio kickstart skipped"));
-            document.getElementById('status').innerText = "Status: Scanning...";
+            document.getElementById('silentKeepAlive').play().catch(err => console.log("Audio lock skipped"));
             document.getElementById('status').innerText = "Status: Scanning...";
             try {
                 hudDevice = await navigator.bluetooth.requestDevice({
@@ -231,7 +234,7 @@
                 const data = await response.json();
 
                 if (data && data.length > 0) {
-                    setupRoute(parseFloat(data.lat[0]), parseFloat(data.lon[0]));
+                    setupRoute(parseFloat(data[0].lat), parseFloat(data[0].lon));
                 } else {
                     alert("Location not found.");
                 }
@@ -259,7 +262,6 @@
             if (!hudCharacteristic || isSending) return;
             isSending = true;
             
-            // Packs everything into a single streamlined string packet
             const payload = `${time},${dir},${dist},${speed},${heading}`;
             document.getElementById('hudPayload').innerText = payload;
 
