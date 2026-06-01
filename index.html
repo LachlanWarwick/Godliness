@@ -28,6 +28,12 @@
     <button id="connectBtn" onclick="connectHUD()">🔗 Connect Glasses</button>
     <div id="status">Status: Disconnected</div>
 
+    <div style="margin: 10px 0;">
+        <input type="text" id="destinationInput" placeholder="Enter destination..." style="padding: 10px; width: 60%; border-radius: 8px; border: 1px solid #555; background: #222; color: white; font-size: 16px;">
+        <button onclick="searchDestination()" style="width: auto; padding: 10px 15px; margin: 0 2px; background: #00ff88; color: black; border: none;">Go</button>
+        <button onclick="clearRoute()" style="width: auto; padding: 10px 15px; margin: 0 2px; background: #ff4444; color: white; border: none;">Clear</button>
+    </div>
+
     <div id="map"></div>
     
     <div id="navHUDInfo">
@@ -165,6 +171,51 @@
             } catch (error) {
                 document.getElementById('status').innerText = "Error: " + error.message;
             }
+        }
+
+        // NEW: Search for a typed address/location
+        async function searchDestination() {
+            const query = document.getElementById('destinationInput').value;
+            if (!query) return alert("Please type a destination first!");
+            if (currentLat === null) return alert("Waiting for GPS signal...");
+
+            try {
+                // Uses open-source Nominatim API to convert text to GPS coordinates
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                const data = await response.json();
+
+                if (data && data.length > 0) {
+                    const targetLat = parseFloat(data.lat[0]);
+                    const targetLng = parseFloat(data.lon[0]);
+                    
+                    // Trigger your existing route calculator using the found coordinates
+                    setupRoute(targetLat, targetLng);
+                } else {
+                    alert("Location not found. Try being more specific!");
+                }
+            } catch (error) {
+                console.log("Search error: " + error.message);
+            }
+        }
+
+        // NEW: Remove the route from the map and stop broadcasting it to the HUD
+        function clearRoute() {
+            if (routingControl) {
+                map.removeControl(routingControl);
+                routingControl = null;
+            }
+            
+            // Clear out the search text field
+            document.getElementById('destinationInput').value = "";
+            
+            // Reset our tracking variables back to standing still
+            lastDirection = "S";
+            lastDistance = "0m";
+            lastStreet = "Ready...";
+            
+            // Send a blank/clear signal packet over to the glasses screen immediately
+            const timeStr = document.getElementById('clock').innerText;
+            broadcastToHUD(timeStr, "S", "0m", "Cleared");
         }
 
         function refreshHUDTime(currentTimeStr) {
