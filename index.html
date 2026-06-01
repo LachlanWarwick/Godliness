@@ -120,7 +120,7 @@
             }).addTo(map);
 
             routingControl.on('routesfound', function(e) {
-                const routes = e.routes;
+                const routes = e.routes[0];
                 const steps = routes.instructions; 
                 
                 if (steps && steps.length > 0) {
