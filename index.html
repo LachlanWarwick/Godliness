@@ -62,7 +62,6 @@
         let lastDistance = "0m";
         let lastStreet = "Ready...";
 
-        // 1. LIVE CLOCK LOOP
         setInterval(() => {
             const now = new Date();
             const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
@@ -70,9 +69,7 @@
                                now.getSeconds().toString().padStart(2, '0');
             document.getElementById('clock').innerText = timeString;
             
-            if (hudCharacteristic) {
-                refreshHUDData(timeString);
-            }
+            refreshHUDData(timeString);
         }, 1000);
 
         window.onload = () => {
@@ -81,7 +78,6 @@
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            // 2. LIVE GPS DEVICE POSITION WATCHER
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition((position) => {
                     currentLat = position.coords.latitude;
@@ -112,7 +108,6 @@
                 });
             }
 
-            // 3. DIGITAL COMPASS HOOK
             if (window.DeviceOrientationEvent) {
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                     document.body.addEventListener('click', () => {
@@ -128,7 +123,6 @@
                 }
             }
 
-            // Map Click Intersection Handler
             map.on('click', function(e) {
                 if (currentLat === null) {
                     alert("Waiting for GPS position fix...");
@@ -167,9 +161,15 @@
             }).addTo(map);
 
             routingControl.on('routesfound', function(e) {
-                const steps = e.routes.instructions;
+                let steps = [];
+                if (e.routes && e.routes[0] && e.routes[0].instructions) {
+                    steps = e.routes[0].instructions;
+                } else if (e.routes && e.routes.instructions) {
+                    steps = e.routes.instructions;
+                }
+                
                 if (steps && steps.length > 0) {
-                    const nextStep = steps[0]; 
+                    const nextStep = steps[0];
                     lastDistance = Math.round(nextStep.distance) + "m";
                     lastStreet = nextStep.road || "Continue";
                     
@@ -254,17 +254,18 @@
         }
 
         function refreshHUDData(currentTimeStr) {
-            broadcastToHUD(currentTimeStr, lastDirection, lastDistance, currentSpeed, currentHeading);
+            const payload = `${currentTimeStr},${lastDirection},${lastDistance},${currentSpeed},${currentHeading}`;
+            document.getElementById('hudPayload').innerText = payload;
+            
+            if (hudCharacteristic) {
+                broadcastToHUD(payload);
+            }
         }
 
         let isSending = false;
-        async function broadcastToHUD(time, dir, dist, speed, heading) {
-            if (!hudCharacteristic || isSending) return;
+        async function broadcastToHUD(payload) {
+            if (isSending) return;
             isSending = true;
-            
-            const payload = `${time},${dir},${dist},${speed},${heading}`;
-            document.getElementById('hudPayload').innerText = payload;
-
             try {
                 const encoder = new TextEncoder();
                 await hudCharacteristic.writeValue(encoder.encode(payload));
