@@ -104,42 +104,47 @@
         };
 
         function setupRoute(destLat, destLng) {
-            if (routingControl) {
-                map.removeControl(routingControl);
-            }
+    // 1. Fully remove existing routing control to wipe memory
+    if (routingControl) {
+        map.removeControl(routingControl);
+        routingControl = null;
+    }
 
-            routingControl = L.Routing.control({
-                waypoints: [
-                    L.latLng(currentLat, currentLng),
-                    L.latLng(destLat, destLng)
-                ],
-                router: L.Routing.osrmv1({
-                    serviceUrl: 'https://router.project-osrm.org/route/v1'
-                }),
-                show: false 
-            }).addTo(map);
+    // 2. Define exactly two waypoints
+    const startPoint = L.latLng(currentLat, currentLng);
+    const endPoint = L.latLng(destLat, destLng);
 
-            routingControl.on('routesfound', function(e) {
-                const routes = e.routes[0];
-                const steps = routes.instructions; 
-                
-                if (steps && steps.length > 0) {
-                    const nextStep = steps[0]; 
-                    lastDistance = Math.round(nextStep.distance) + "m";
-                    lastStreet = nextStep.road || "Continue";
-                    
-                    const type = nextStep.type ? nextStep.type.toLowerCase() : "";
-                    const modifier = nextStep.modifier ? nextStep.modifier.toLowerCase() : "";
-                    
-                    if (type.includes("left") || modifier.includes("left")) lastDirection = "L";
-                    else if (type.includes("right") || modifier.includes("right")) lastDirection = "R";
-                    else lastDirection = "S";
+    // 3. Create fresh routing control
+    routingControl = L.Routing.control({
+        waypoints: [startPoint, endPoint],
+        router: L.Routing.osrmv1({
+            serviceUrl: 'https://router.project-osrm.org/route/v1'
+        }),
+        // This hides the default OSRM UI elements (markers, lists)
+        createMarker: function(i, wp, nWps) {
+            // Only create markers for start (0) and end (1)
+            return L.marker(wp.latLng).bindPopup(i === 0 ? "Start" : "Destination");
+        },
+        routeWhileDragging: false,
+        addWaypoints: false // Prevents adding more than the 2 we set
+    }).addTo(map);
 
-                    const timeStr = document.getElementById('clock').innerText;
-                    broadcastToHUD(timeStr, lastDirection, lastDistance, lastStreet);
-                }
-            });
-        }
+    // 4. Listen for updates to update the HUD
+    routingControl.on('routesfound', function(e) {
+        const route = e.routes[0];
+        const nextStep = route.instructions;
+
+        lastDistance = Math.round(nextStep.distance) + "m";
+        lastStreet = nextStep.text || "Continue";
+        
+        const type = nextStep.type ? nextStep.type.toLowerCase() : "";
+        lastDirection = (type.includes("left")) ? "L" : 
+                        (type.includes("right")) ? "R" : "S";
+
+        const timeStr = document.getElementById('clock').innerText;
+        broadcastToHUD(timeStr, lastDirection, lastDistance, lastStreet);
+    });
+}
 
         async function connectHUD() {
             document.getElementById('status').innerText = "Status: Scanning...";
