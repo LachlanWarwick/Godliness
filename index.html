@@ -2,44 +2,152 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HUD Controller</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>HUD Auto-Navigation</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
     <style>
-        body { font-family: -apple-system, sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
-        h1 { color: #00ff88; font-size: 24px; }
-        button { background: #333; color: white; border: 2px solid #555; padding: 15px 25px; margin: 10px; font-size: 18px; border-radius: 12px; cursor: pointer; transition: 0.2s; }
-        button:active { background: #00ff88; color: black; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; max-width: 400px; margin: 20px auto; }
-        input { background: #222; border: 1px solid #444; color: white; padding: 12px; width: 80%; max-width: 300px; font-size: 16px; border-radius: 8px; margin-bottom: 10px; }
-        #status { margin-top: 20px; font-weight: bold; color: #aaa; }
+        body { font-family: -apple-system, sans-serif; background: #121212; color: white; margin: 0; padding: 10px; text-align: center; }
+        h1 { color: #00ff88; font-size: 20px; margin: 5px 0; }
+        #clock { font-size: 24px; font-family: monospace; color: #00ffff; margin-bottom: 10px; font-weight: bold; }
+        #map { height: 45vh; width: 100%; border-radius: 12px; margin-top: 10px; background: #222; }
+        button { background: #333; color: white; border: 2px solid #555; padding: 12px 20px; font-size: 16px; border-radius: 10px; cursor: pointer; width: 90%; max-width: 300px; margin-bottom: 10px; }
+        #status { font-weight: bold; color: #aaa; margin-bottom: 5px; font-size: 14px; }
+        #navHUDInfo { background: #1e1e1e; padding: 10px; margin-top: 10px; border-radius: 8px; border: 1px solid #333; font-size: 14px; color: #00ff88; }
     </style>
 </head>
 <body>
 
-    <h1>HUD Smart Glasses</h1>
-    <button id="connectBtn" onclick="connectHUD()">🔗 Connect Glasses</button>
+    <h1>HUD Smart Glasses Control</h1>
+    <div id="clock">00:00:00</div>
     
+    <button id="connectBtn" onclick="connectHUD()">🔗 Connect Glasses</button>
     <div id="status">Status: Disconnected</div>
 
-    <div class="grid">
-        <button onclick="sendQuickNav('L')">⬅️ Left</button>
-        <button onclick="sendQuickNav('S')">⬆️ Straight</button>
-        <button onclick="sendQuickNav('R')">➡️ Right</button>
+    <div id="map"></div>
+    
+    <div id="navHUDInfo">
+        <strong>Active HUD Broadcast:</strong> <span id="hudPayload">Waiting for route...</span>
     </div>
-
-    <hr style="border: 1px solid #333; margin: 20px 0;">
-
-    <h3>Custom Manual Input</h3>
-    <input type="text" id="distInput" placeholder="Distance (e.g., 150m)"><br>
-    <input type="text" id="streetInput" placeholder="Street Name (e.g., Oak St.)"><br>
-    <button onclick="sendCustomData()">⚡ Sync Layout</button>
 
     <script>
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         
         let hudCharacteristic = null;
+        let map, userMarker, routingControl;
+        let currentLat = null, currentLng = null;
 
+        // 1. LIVE HIGH-RESOLUTION CLOCK LOOP (hh:mm:ss)
+        setInterval(() => {
+            const now = new Date();
+            const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
+                               now.getMinutes().toString().padStart(2, '0') + ':' + 
+                               now.getSeconds().toString().padStart(2, '0');
+            document.getElementById('clock').innerText = timeString;
+            
+            // If connected, continuously refresh the time step on the glasses without waiting for navigation shifts
+            if (hudCharacteristic) {
+                refreshHUDTime(timeString);
+            }
+        }, 1000);
+
+        // Cached layout structures to preserve step info during time refreshes
+        let lastDirection = "S";
+        let lastDistance = "0m";
+        let lastStreet = "Ready...";
+
+        // Initialize Map and GPS tracking hooks immediately when page loads
+        window.onload = () => {
+            // Setup base map layer centered at default coordinates
+            map = L.map('map').setView(, 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // 2. LIVE GPS BACKGROUND WATCH TRACKER
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition((position) => {
+                    currentLat = position.coords.latitude;
+                    currentLng = position.coords.longitude;
+                    
+                    const newPos = [currentLat, currentLng];
+                    
+                    if (!userMarker) {
+                        userMarker = L.marker(newPos).addTo(map).bindPopup("You are here").openPopup();
+                        map.setView(newPos, 16);
+                    } else {
+                        userMarker.setLatLng(newPos);
+                    }
+
+                    // Dynamically recalculate active path steps if route exists and you move
+                    if (routingControl) {
+                        routingControl.spliceWaypoints(0, 1, L.latLng(currentLat, currentLng));
+                    }
+                }, (err) => console.log("GPS Error: " + err.message), {
+                    enableHighAccuracy: true,
+                    maximumAge: 0
+                });
+            }
+
+            // Map Click Interaction: Tap anywhere on the map to drop target pin and calculate instructions
+            map.on('click', function(e) {
+                if (currentLat === null) {
+                    alert("Waiting for your phone's GPS position fix...");
+                    return;
+                }
+                setupRoute(e.latlng.lat, e.latlng.lng);
+            });
+        };
+
+        // 3. ROUTE PROCESSING ENGINE
+        function setupRoute(destLat, destLng) {
+            if (routingControl) {
+                map.removeControl(routingControl);
+            }
+
+            routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(currentLat, currentLng),
+                    L.latLng(destLat, destLng)
+                ],
+                router: L.Routing.osrmv1({
+                    serviceUrl: 'https://router.project-osrm.org/route/v1'
+                }),
+                show: false // Keep text details off phone window to optimize speed
+            }).addTo(map);
+
+            // Hook fired whenever route data successfully links up
+            routingControl.on('routesfound', function(e) {
+                const routes = e.routes;
+                const steps = routes.instructions; // Extracts turn-by-turn maneuvers
+                
+                if (steps && steps.length > 0) {
+                    // Grab upcoming step metrics
+                    const nextStep = steps; 
+                    lastDistance = Math.round(nextStep.distance) + "m";
+                    lastStreet = nextStep.road || "Continue";
+                    
+                    // Parse raw text commands into specific rotation characters ('R', 'L', 'S')
+                    const type = nextStep.type ? nextStep.type.toLowerCase() : "";
+                    const modifier = nextStep.modifier ? nextStep.modifier.toLowerCase() : "";
+                    
+                    if (type.includes("left") || modifier.includes("left")) lastDirection = "L";
+                    else if (type.includes("right") || modifier.includes("right")) lastDirection = "R";
+                    else lastDirection = "S";
+
+                    // Instantly trigger transfer loop payload
+                    const timeStr = document.getElementById('clock').innerText;
+                    broadcastToHUD(timeStr, lastDirection, lastDistance, lastStreet);
+                }
+            });
+        }
+
+        // 4. BLE COMMUNICATION PIPELINES
         async function connectHUD() {
             document.getElementById('status').innerText = "Status: Scanning...";
             try {
@@ -59,39 +167,25 @@
             }
         }
 
-        async function sendData(stringPayload) {
-            if (!hudCharacteristic) {
-                alert("Please connect to HUD Glasses first!");
-                return;
-            }
+        function refreshHUDTime(currentTimeStr) {
+            broadcastToHUD(currentTimeStr, lastDirection, lastDistance, lastStreet);
+        }
+
+        async function broadcastToHUD(time, dir, dist, street) {
+            if (!hudCharacteristic) return;
+            
+            // Clean strings to prevent layout overflow errors over BLE channel buffers
+            let shortStreet = street.length > 10 ? street.substring(0, 10) + "." : street;
+            const payload = `${time},${dir},${dist},${shortStreet}`;
+            
+            document.getElementById('hudPayload').innerText = payload;
+
             try {
                 const encoder = new TextEncoder();
-                await hudCharacteristic.writeValue(encoder.encode(stringPayload));
-                console.log("Sent: " + stringPayload);
+                await hudCharacteristic.writeValue(encoder.encode(payload));
             } catch (error) {
-                document.getElementById('status').innerText = "Send Failed: " + error.message;
+                console.log("Transmission error: " + error.message);
             }
-        }
-
-        function getFormattedTime() {
-            const now = new Date();
-            return now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-        }
-
-        function sendQuickNav(direction) {
-            const time = getFormattedTime();
-            // Default quick placeholders for button clicks
-            const payload = `${time},${direction},200m,Navigating...`;
-            sendData(payload);
-        }
-
-        function sendCustomData() {
-            const time = getFormattedTime();
-            const dist = document.getElementById('distInput').value || "0m";
-            const street = document.getElementById('streetInput').value || "Route";
-            // Default to Straight unless otherwise parsed
-            const payload = `${time},S,${dist},${street}`;
-            sendData(payload);
         }
     </script>
 </body>
