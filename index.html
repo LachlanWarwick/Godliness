@@ -24,7 +24,7 @@
 
     <h1>HUD Smart Glasses Control</h1>
     <div id="clock">00:00:00</div>
-    
+    <audio id="silentKeepAlive" loop src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAAAD"></audio>
     <button id="connectBtn" onclick="connectHUD()">🔗 Connect Glasses</button>
     <div id="status">Status: Disconnected</div>
 
@@ -182,6 +182,8 @@
         }
 
         async function connectHUD() {
+            document.getElementById('silentKeepAlive').play().catch(err => console.log("Audio kickstart skipped"));
+            document.getElementById('status').innerText = "Status: Scanning...";
             document.getElementById('status').innerText = "Status: Scanning...";
             try {
                 hudDevice = await navigator.bluetooth.requestDevice({
