@@ -28,8 +28,13 @@
     <button id="connectBtn" onclick="connectHUD()">🔗 Connect Glasses</button>
     <div id="status">Status: Disconnected</div>
 
+    <div style="display: flex; justify-content: space-around; margin: 10px 0; background: #1e1e1e; padding: 10px; border-radius: 8px; border: 1px solid #333;">
+        <div>Speed: <span id="liveSpeed" style="color: #00ffff; font-weight: bold;">0 km/h</span></div>
+        <div>Heading: <span id="liveHeading" style="color: #ff9900; font-weight: bold;">0° N</span></div>
+    </div>
+
     <div style="margin: 10px 0;">
-        <input type="text" id="destinationInput" placeholder="Enter destination..." style="padding: 10px; width: 60%; border-radius: 8px; border: 1px solid #555; background: #222; color: white; font-size: 16px;">
+        <input type="text" id="destinationInput" placeholder="Enter destination..." style="padding: 10px; width: 50%; border-radius: 8px; border: 1px solid #555; background: #222; color: white; font-size: 16px;">
         <button onclick="searchDestination()" style="width: auto; padding: 10px 15px; margin: 0 2px; background: #00ff88; color: black; border: none;">Go</button>
         <button onclick="clearRoute()" style="width: auto; padding: 10px 15px; margin: 0 2px; background: #ff4444; color: white; border: none;">Clear</button>
     </div>
@@ -44,11 +49,20 @@
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
         
+        let hudDevice = null;
         let hudCharacteristic = null;
         let map, userMarker, routingControl;
+        
+        // Telemetry Variables
         let currentLat = null, currentLng = null;
+        let currentSpeed = "0km/h";
+        let currentHeading = "0°";
 
-        // 1. LIVE HIGH-RESOLUTION CLOCK LOOP (hh:mm:ss)
+        let lastDirection = "S";
+        let lastDistance = "0m";
+        let lastStreet = "Ready...";
+
+        // 1. LIVE CLOCK LOOP (Fires every second)
         setInterval(() => {
             const now = new Date();
             const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
@@ -56,32 +70,32 @@
                                now.getSeconds().toString().padStart(2, '0');
             document.getElementById('clock').innerText = timeString;
             
-            // If connected, continuously refresh the time step on the glasses without waiting for navigation shifts
             if (hudCharacteristic) {
-                refreshHUDTime(timeString);
+                refreshHUDData(timeString);
             }
         }, 1000);
 
-        // Cached layout structures to preserve step info during time refreshes
-        let lastDirection = "S";
-        let lastDistance = "0m";
-        let lastStreet = "Ready...";
-
-        // Initialize Map and GPS tracking hooks immediately when page loads
         window.onload = () => {
-            // Setup base map layer centered at default coordinates
-            map = L.map('map').setView([0,0], 2);
+            map = L.map('map').setView(, 2);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            // 2. LIVE GPS BACKGROUND WATCH TRACKER
+            // 2. UPGRADED GPS WATCHER (Captures Speed)
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition((position) => {
                     currentLat = position.coords.latitude;
                     currentLng = position.coords.longitude;
-                    
                     const newPos = [currentLat, currentLng];
+                    
+                    // Calculate speed from meters/second to km/h
+                    if (position.coords.speed !== null && position.coords.speed > 0) {
+                        const kmh = Math.round(position.coords.speed * 3.6);
+                        currentSpeed = kmh + "km/h";
+                    } else {
+                        currentSpeed = "0km/h";
+                    }
+                    document.getElementById('liveSpeed').innerText = currentSpeed;
                     
                     if (!userMarker) {
                         userMarker = L.marker(newPos).addTo(map).bindPopup("You are here").openPopup();
@@ -90,7 +104,6 @@
                         userMarker.setLatLng(newPos);
                     }
 
-                    // Dynamically recalculate active path steps if route exists and you move
                     if (routingControl) {
                         routingControl.spliceWaypoints(0, 1, L.latLng(currentLat, currentLng));
                     }
@@ -100,45 +113,62 @@
                 });
             }
 
-            // Map Click Interaction: Tap anywhere on the map to drop target pin and calculate instructions
-            map.on('click', function(e) {
-                if (currentLat === null) {
-                    alert("Waiting for your phone's GPS position fix...");
-                    return;
+            // 3. IPHONE COMPASS SENSOR ACTIVATION
+            if (window.DeviceOrientationEvent) {
+                // iOS Safari requires explicit permission to read the compass sensor
+                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    document.body.addEventListener('click', () => {
+                        DeviceOrientationEvent.requestPermission()
+                            .then(response => {
+                                if (response === 'granted') {
+                                    window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+                                }
+                            }).catch(console.error);
+                    }, { once: true });
+                } else {
+                    window.addEventListener('deviceorientation', handleOrientation, true);
                 }
-                setupRoute(e.latlng.lat, e.latlng.lng);
-            });
+            }
         };
 
-        // 3. ROUTE PROCESSING ENGINE
-        function setupRoute(destLat, destLng) {
-            if (routingControl) {
-                map.removeControl(routingControl);
+        // Processes compass orientation angles
+        function handleOrientation(event) {
+            let heading = event.webkitCompassHeading || event.alpha;
+            if (heading !== null && heading !== undefined) {
+                // Round to whole numbers
+                let degrees = Math.round(heading);
+                
+                // Determine cardinal direction tag
+                let directionTag = "N";
+                if (degrees > 22 && degrees <= 67) directionTag = "NE";
+                else if (degrees > 67 && degrees <= 112) directionTag = "E";
+                else if (degrees > 112 && degrees <= 157) directionTag = "SE";
+                else if (degrees > 157 && degrees <= 202) directionTag = "S";
+                else if (degrees > 202 && degrees <= 247) directionTag = "SW";
+                else if (degrees > 247 && degrees <= 292) directionTag = "W";
+                else if (degrees > 292 && degrees <= 337) directionTag = "NW";
+
+                currentHeading = `${degrees}°`;
+                document.getElementById('liveHeading').innerText = `${degrees}° ${directionTag}`;
             }
+        }
+
+        function setupRoute(destLat, destLng) {
+            if (routingControl) map.removeControl(routingControl);
 
             routingControl = L.Routing.control({
-                waypoints: [
-                    L.latLng(currentLat, currentLng),
-                    L.latLng(destLat, destLng)
-                ],
-                router: L.Routing.osrmv1({
-                    serviceUrl: 'https://router.project-osrm.org/route/v1'
-                }),
-                show: false // Keep text details off phone window to optimize speed
+                waypoints: [L.latLng(currentLat, currentLng), L.latLng(destLat, destLng)],
+                router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' }),
+                show: false
             }).addTo(map);
 
-            // Hook fired whenever route data successfully links up
             routingControl.on('routesfound', function(e) {
-                const routes = e.routes;
-                const steps = routes[0].instructions; // Extracts turn-by-turn maneuvers
-                
+                const steps = e.routes.instructions;
                 if (steps && steps.length > 0) {
-                    // Grab upcoming step metrics
-                    const nextStep = steps[0]; 
+                    const nextStep = steps; 
                     lastDistance = Math.round(nextStep.distance) + "m";
                     lastStreet = nextStep.road || "Continue";
                     
-                    // Parse raw text commands into specific rotation characters ('R', 'L', 'S')
                     const type = nextStep.type ? nextStep.type.toLowerCase() : "";
                     const modifier = nextStep.modifier ? nextStep.modifier.toLowerCase() : "";
                     
@@ -146,89 +176,89 @@
                     else if (type.includes("right") || modifier.includes("right")) lastDirection = "R";
                     else lastDirection = "S";
 
-                    // Instantly trigger transfer loop payload
-                    const timeStr = document.getElementById('clock').innerText;
-                    broadcastToHUD(timeStr, lastDirection, lastDistance, lastStreet);
+                    refreshHUDData(document.getElementById('clock').innerText);
                 }
             });
         }
 
-        // 4. BLE COMMUNICATION PIPELINES
         async function connectHUD() {
             document.getElementById('status').innerText = "Status: Scanning...";
             try {
-                const device = await navigator.bluetooth.requestDevice({
+                hudDevice = await navigator.bluetooth.requestDevice({
                     filters: [{ name: 'HUD_Glasses' }],
                     optionalServices: [SERVICE_UUID]
                 });
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService(SERVICE_UUID);
-                hudCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
-                
-                document.getElementById('status').innerText = "Status: Connected! 🎉";
-                document.getElementById('connectBtn').style.background = "#00ff88";
-                document.getElementById('connectBtn').style.color = "black";
+                hudDevice.addEventListener('gattserverdisconnected', onDisconnected);
+                await handleBLEConnection();
             } catch (error) {
                 document.getElementById('status').innerText = "Error: " + error.message;
             }
         }
 
-        // NEW: Search for a typed address/location
+        async function handleBLEConnection() {
+            const server = await hudDevice.gatt.connect();
+            const service = await server.getPrimaryService(SERVICE_UUID);
+            hudCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+            
+            document.getElementById('status').innerText = "Status: Connected! 🎉";
+            document.getElementById('connectBtn').style.background = "#00ff88";
+            document.getElementById('connectBtn').style.color = "black";
+        }
+
+        async function onDisconnected() {
+            document.getElementById('status').innerText = "Status: Link Lost! Reconnecting...";
+            document.getElementById('connectBtn').style.background = "#ff9900";
+            let reconnected = false;
+            while (!reconnected) {
+                try {
+                    await handleBLEConnection();
+                    reconnected = true;
+                } catch (err) {
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                }
+            }
+        }
+
         async function searchDestination() {
             const query = document.getElementById('destinationInput').value;
             if (!query) return alert("Please type a destination first!");
             if (currentLat === null) return alert("Waiting for GPS signal...");
 
             try {
-                // Uses open-source Nominatim API to convert text to GPS coordinates
                 const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
                 const data = await response.json();
 
                 if (data && data.length > 0) {
-                    const targetLat = parseFloat(data.lat[0]);
-                    const targetLng = parseFloat(data.lon[0]);
-                    
-                    // Trigger your existing route calculator using the found coordinates
-                    setupRoute(targetLat, targetLng);
+                    setupRoute(parseFloat(data.lat[0]), parseFloat(data.lon[0]));
                 } else {
-                    alert("Location not found. Try being more specific!");
+                    alert("Location not found.");
                 }
             } catch (error) {
                 console.log("Search error: " + error.message);
             }
         }
 
-        // NEW: Remove the route from the map and stop broadcasting it to the HUD
         function clearRoute() {
             if (routingControl) {
                 map.removeControl(routingControl);
                 routingControl = null;
             }
-            
-            // Clear out the search text field
             document.getElementById('destinationInput').value = "";
-            
-            // Reset our tracking variables back to standing still
-            lastDirection = "S";
-            lastDistance = "0m";
-            lastStreet = "Ready...";
-            
-            // Send a blank/clear signal packet over to the glasses screen immediately
-            const timeStr = document.getElementById('clock').innerText;
-            broadcastToHUD(timeStr, "S", "0m", "Cleared");
+            lastDirection = "S"; lastDistance = "0m"; lastStreet = "Ready...";
+            refreshHUDData(document.getElementById('clock').innerText);
         }
 
-        function refreshHUDTime(currentTimeStr) {
-            broadcastToHUD(currentTimeStr, lastDirection, lastDistance, lastStreet);
+        function refreshHUDData(currentTimeStr) {
+            broadcastToHUD(currentTimeStr, lastDirection, lastDistance, currentSpeed, currentHeading);
         }
 
-        async function broadcastToHUD(time, dir, dist, street) {
-            if (!hudCharacteristic) return;
+        let isSending = false;
+        async function broadcastToHUD(time, dir, dist, speed, heading) {
+            if (!hudCharacteristic || isSending) return;
+            isSending = true;
             
-            // Clean strings to prevent layout overflow errors over BLE channel buffers
-            let shortStreet = street.length > 10 ? street.substring(0, 10) + "." : street;
-            const payload = `${time},${dir},${dist},${shortStreet}`;
-            
+            // Packs everything into a single streamlined string packet
+            const payload = `${time},${dir},${dist},${speed},${heading}`;
             document.getElementById('hudPayload').innerText = payload;
 
             try {
@@ -236,6 +266,8 @@
                 await hudCharacteristic.writeValue(encoder.encode(payload));
             } catch (error) {
                 console.log("Transmission error: " + error.message);
+            } finally {
+                isSending = false;
             }
         }
     </script>
