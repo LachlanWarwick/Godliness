@@ -124,11 +124,11 @@
             // Hook fired whenever route data successfully links up
             routingControl.on('routesfound', function(e) {
                 const routes = e.routes;
-                const steps = routes.instructions; // Extracts turn-by-turn maneuvers
+                const steps = routes[0].instructions; // Extracts turn-by-turn maneuvers
                 
                 if (steps && steps.length > 0) {
                     // Grab upcoming step metrics
-                    const nextStep = steps; 
+                    const nextStep = steps[0]; 
                     lastDistance = Math.round(nextStep.distance) + "m";
                     lastStreet = nextStep.road || "Continue";
                     
