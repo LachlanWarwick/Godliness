@@ -132,7 +132,7 @@
     // 4. Listen for updates to update the HUD
     routingControl.on('routesfound', function(e) {
         const route = e.routes[0];
-        const nextStep = route.instructions;
+        const nextStep = route.instructions[0];
 
         lastDistance = Math.round(nextStep.distance) + "m";
         lastStreet = nextStep.text || "Continue";
